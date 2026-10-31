@@ -1,0 +1,25 @@
+{
+  "schema_version": "1.0",
+  "ecosystem": "EH3D",
+  "name": "EH3D-SUITE-LAUNCHER",
+  "version": "0.0.1",
+  "role": "tool",
+  "stack": "rust",
+  "technologies": [
+    "Rust",
+    "serde_json",
+    "SHA-256"
+  ],
+  "deployment_target": "user-pc",
+  "maturity": "scaffolding",
+  "evidence": "host-test",
+  "hardware_bound": false,
+  "family": "Ecosystem Operations",
+  "parent": null,
+  "build": "cargo build --release; cargo test",
+  "notes": "Scaffolding v0.0.1: a library and a command line that find the programs of the suite by their eh3d.project.json manifests, start a program and start it again a limited number of times when it fails, keep the list of recent projects and read and write the project file (.eh3dproj: name, files with kind and SHA-256, work zero). No window yet, no discovery of machines on the network, and nothing here has run on a machine.",
+  "native_version": {
+    "file": "Cargo.toml",
+    "pattern": "^version\\s*=\\s*\"(\\d+\\.\\d+\\.\\d+)\""
+  }
+}

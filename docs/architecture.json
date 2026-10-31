@@ -1,0 +1,135 @@
+{
+  "repo": "EH3D-SUITE-LAUNCHER",
+  "ecosystem": "eh3d",
+  "tagline": "Finds the programs of the suite, starts them and keeps the project file.",
+  "description": "EH3D-SUITE-LAUNCHER is a Rust library and command line that read the manifests of the repositories of the suite, start their programs (again when they fail) and keep the list of recent projects and the project file. It has no window yet.",
+  "columns": [
+    "WHO USES IT",
+    "THIS REPOSITORY",
+    "WHAT IT DEPENDS ON"
+  ],
+  "nodes": [
+    {
+      "id": "person",
+      "column": 0,
+      "level": "external",
+      "title": "A person",
+      "lines": [
+        "asks which programs there are",
+        "and starts one"
+      ]
+    },
+    {
+      "id": "suite",
+      "column": 0,
+      "level": "external",
+      "title": "Suite programs",
+      "lines": [
+        "DRILLPRO, ROUTEPRO, the",
+        "window of the Bungard",
+        "machines and the rest"
+      ]
+    },
+    {
+      "id": "registry",
+      "column": 1,
+      "level": "tested",
+      "title": "registry",
+      "lines": [
+        "reads the manifests, skips",
+        "the damaged ones, finds",
+        "the built programs"
+      ],
+      "code": [
+        "src/registry.rs::pub fn discover",
+        "src/registry.rs::pub fn find_binary"
+      ]
+    },
+    {
+      "id": "launch",
+      "column": 1,
+      "level": "tested",
+      "title": "launch",
+      "lines": [
+        "starts a program and starts",
+        "it again if it fails"
+      ],
+      "code": [
+        "src/launch.rs::pub fn supervise"
+      ]
+    },
+    {
+      "id": "project",
+      "column": 1,
+      "level": "tested",
+      "title": "project and recent",
+      "lines": [
+        "the .eh3dproj file with the",
+        "SHA-256 of its files and the",
+        "last ten projects"
+      ],
+      "code": [
+        "src/project.rs::pub struct Project",
+        "src/recent.rs::pub fn remember"
+      ]
+    },
+    {
+      "id": "manifests",
+      "column": 2,
+      "level": "external",
+      "title": "eh3d.project.json",
+      "lines": [
+        "one in every repository of",
+        "the suite"
+      ]
+    },
+    {
+      "id": "std",
+      "column": 2,
+      "level": "external",
+      "title": "serde_json and sha2",
+      "lines": [
+        "the only two dependencies"
+      ],
+      "code": [
+        "Cargo.toml::[dependencies]"
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "from": "person",
+      "to": "registry",
+      "label": "list",
+      "level": "tested"
+    },
+    {
+      "from": "person",
+      "to": "launch",
+      "label": "launch",
+      "level": "tested"
+    },
+    {
+      "from": "suite",
+      "to": "project",
+      "label": "open",
+      "level": "tested"
+    },
+    {
+      "from": "registry",
+      "to": "manifests",
+      "level": "tested"
+    },
+    {
+      "from": "project",
+      "to": "std",
+      "level": "tested"
+    }
+  ],
+  "legend": {
+    "tested": "covered by tests on a computer (15 tests)",
+    "config": "planned, not used today",
+    "external": "a person, a file or another repository"
+  },
+  "footer": "No window and no discovery of machines yet."
+}

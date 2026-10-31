@@ -1,0 +1,25 @@
+[package]
+name = "eh3d-suite-launcher"
+version = "0.0.1"
+edition = "2021"
+rust-version = "1.75"
+description = "The hub of the EH3D Fabrication Suite: finds the programs of the suite, starts them, keeps the recent projects and the project file"
+license = "GPL-3.0-or-later"
+repository = "https://github.com/JuanenRac/EH3D-SUITE-LAUNCHER"
+readme = "README.md"
+
+[lib]
+name = "eh3d_suite_launcher"
+path = "src/lib.rs"
+
+[[bin]]
+name = "eh3d-launcher"
+path = "src/main.rs"
+
+[dependencies]
+serde_json = "1"
+sha2 = "0.10"
+
+[profile.release]
+opt-level = 3
+lto = true
