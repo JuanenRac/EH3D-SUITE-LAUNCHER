@@ -57,7 +57,7 @@ Jede Zeile ist ein Teil dieses Repositorys, und die Ampel sagt, wie weit er heut
 
 * **Das Register** (`src/registry.rs`): Jedes Repository der Suite sagt in seiner `eh3d.project.json`, was es ist; der Launcher liest sie, überspringt beschädigte mit Begründung und meldet, welche Programme gebaut sind.
 * **Der Starter** (`src/launch.rs`): startet ein Programm der Suite und startet es bei einem Fehler bis zu zweimal neu, mit sich verdoppelnder Wartezeit; ein Programm, das gut endet, wird in Ruhe gelassen.
-* **Die Projektdatei** (`src/project.rs`, `.eh3dproj`): Name, die Dateien des Auftrags mit Art und SHA-256 und der Arbeitsnullpunkt; beim Lesen werden Pfade, die das Projekt verlassen, abgelehnt und das erste Format migriert. **Zuletzt verwendet** (`src/recent.rs`) merkt sich die letzten zehn.
+* **Die Projektdatei** (`src/project.rs`, `.eh3dlist`): Name, die Dateien des Auftrags mit Art und SHA-256 und der Arbeitsnullpunkt; beim Lesen werden Pfade, die das Projekt verlassen, abgelehnt und das erste Format migriert. **Zuletzt verwendet** (`src/recent.rs`) merkt sich die letzten zehn.
 
 ## 🧩 Rolle in EH3D
 
@@ -173,7 +173,7 @@ EH3D-SUITE-LAUNCHER/
 
 * Es hat noch kein Fenster: nur Bibliothek und Kommandozeile existieren.
 * Es wurde weder an einer Maschine noch mit einer Sammlung echter Dateien erprobt und hatte keine unabhängige Prüfung.
-* Es findet noch keine Maschinen im Netz, hält die Suite nicht aktuell (das macht EH3D-UPDATER) und die `.eh3dproj` ist eine JSON-Datei, die auf die Dateien zeigt, kein Archiv, das sie enthält.
+* Es findet noch keine Maschinen im Netz, hält die Suite nicht aktuell (das macht EH3D-UPDATER) und die `.eh3dlist` ist eine JSON-Datei, die auf die Dateien zeigt, kein Archiv, das sie enthält.
 
 **Als Nächstes**
 

@@ -57,7 +57,7 @@ Cada línea es una parte de este repositorio y la luz dice hasta dónde llega ho
 
 * **El registro** (`src/registry.rs`): cada repositorio de la suite dice lo que es en su `eh3d.project.json`; el launcher los lee, salta los dañados indicando el motivo y dice qué programas están compilados.
 * **El lanzador** (`src/launch.rs`): arranca un programa de la suite y, si termina con error, lo vuelve a arrancar hasta dos veces con una espera que se duplica; un programa que termina bien se deja en paz.
-* **El fichero de proyecto** (`src/project.rs`, `.eh3dproj`): el nombre, los ficheros del trabajo con su tipo y SHA-256 y el cero de trabajo; al leer rechaza rutas que salen del proyecto y migra el primer formato. **Proyectos recientes** (`src/recent.rs`) guarda los diez últimos.
+* **El fichero de proyecto** (`src/project.rs`, `.eh3dlist`): el nombre, los ficheros del trabajo con su tipo y SHA-256 y el cero de trabajo; al leer rechaza rutas que salen del proyecto y migra el primer formato. **Proyectos recientes** (`src/recent.rs`) guarda los diez últimos.
 
 ## 🧩 Papel en EH3D
 
@@ -173,7 +173,7 @@ EH3D-SUITE-LAUNCHER/
 
 * Todavía no tiene ventana: solo existen la biblioteca y la línea de comandos.
 * No se ha probado en una máquina ni con una colección de ficheros reales y no ha tenido revisión independiente.
-* Todavía no descubre máquinas en la red, no mantiene la suite al día (lo hace EH3D-UPDATER) y el `.eh3dproj` es un fichero JSON que apunta a los ficheros, no un archivo que los contiene.
+* Todavía no descubre máquinas en la red, no mantiene la suite al día (lo hace EH3D-UPDATER) y el `.eh3dlist` es un fichero JSON que apunta a los ficheros, no un archivo que los contiene.
 
 **Siguiente**
 

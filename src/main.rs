@@ -14,9 +14,9 @@ const HELP: &str = "eh3d-launcher: the hub of the EH3D Fabrication Suite
 
   eh3d-launcher list [--workspace DIR] [--all]     the programs found (--all also lists firmware, services and apps)
   eh3d-launcher launch NAME [--workspace DIR] [-- ARGS...]    start a program, again up to 2 times if it fails
-  eh3d-launcher new-project FILE.eh3dproj NAME     write an empty project file
-  eh3d-launcher add-layer FILE.eh3dproj LAYER      add a file under the folder of the project (kind and SHA-256 are recorded)
-  eh3d-launcher verify FILE.eh3dproj               check that the files of the project are there and unchanged
+  eh3d-launcher new-project FILE.eh3dlist NAME     write an empty project list
+  eh3d-launcher add-layer FILE.eh3dlist LAYER      add a file under the folder of the project (kind and SHA-256 are recorded)
+  eh3d-launcher verify FILE.eh3dlist               check that the files of the project are there and unchanged
   eh3d-launcher recent [add FILE]                  show the recent projects, or put one at the head
 
 The workspace is the folder that holds the repositories of the suite: --workspace, or the variable EH3D_WORKSPACE, or '..'.
@@ -124,6 +124,14 @@ fn run(mut args: Vec<String>) -> Result<(), String> {
                 args.first().ok_or("new-project needs a file")?,
                 args.get(1).ok_or("new-project needs a name")?,
             );
+            if Path::new(file).extension().and_then(|e| e.to_str())
+                != Some(eh3d_suite_launcher::project::EXTENSION)
+            {
+                return Err(format!(
+                    "{file}: a project list ends in .{} (.eh3dproj is the archive of EH3D-COMMON)",
+                    eh3d_suite_launcher::project::EXTENSION
+                ));
+            }
             if Path::new(file).exists() {
                 return Err(format!("{file}: already exists; nothing was overwritten"));
             }

@@ -140,7 +140,7 @@ fn a_project_records_its_layers_with_a_checksum_and_notices_a_change() {
     assert_eq!(p.layers[1].path, "sub/holes.ncd");
     assert_eq!(p.layers[1].kind, Kind::Drill);
     assert_eq!(p.layers[0].sha256.len(), 64);
-    let file = dir.join("board.eh3dproj");
+    let file = dir.join("board.eh3dlist");
     p.save(&file).unwrap();
     let back = Project::load(&file).unwrap();
     assert_eq!(back, p);
@@ -339,4 +339,18 @@ fn a_program_that_ended_with_an_error_of_use_is_not_started_again() {
     )
     .unwrap();
     assert_eq!((out.runs, out.last_code, out.gave_up), (1, Some(1), true));
+}
+
+#[test]
+fn an_old_project_file_is_still_read_and_an_archive_of_common_is_told_apart() {
+    let dir = temp("oldproj");
+    let old = dir.join("old.eh3dproj");
+    let p = Project::new("board").unwrap();
+    p.save(&old).unwrap();
+    assert_eq!(Project::load(&old).unwrap(), p);
+    let zip = dir.join("archive.eh3dproj");
+    fs::write(&zip, b"PK\x03\x04rest").unwrap();
+    let err = Project::load(&zip).unwrap_err();
+    assert!(err.contains("EH3D-COMMON"), "{err}");
+    assert_eq!(eh3d_suite_launcher::project::EXTENSION, "eh3dlist");
 }

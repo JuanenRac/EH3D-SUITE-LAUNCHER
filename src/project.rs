@@ -1,4 +1,4 @@
-//! The project file (`.eh3dproj`): a JSON document with the name of the project, the files it uses (each with its kind and its SHA-256) and the work zero.
+//! The project list (`.eh3dlist`; the files that older versions wrote as `.eh3dproj` are still read): a JSON document with the name of the project, the files it uses (each with its kind and its SHA-256) and the work zero.
 //! The files stay where they are; the project says which ones and checks that they have not changed.
 
 use serde_json::{json, Value};
@@ -9,6 +9,8 @@ use std::path::Path;
 /// The version of the format this program writes; an older one is migrated when it is read, a newer one is refused.
 pub const SCHEMA_VERSION: u64 = 1;
 pub const MAX_NAME: usize = 120;
+/// The extension of the files this program writes. `.eh3dproj` is the archive of EH3D-COMMON, a different format.
+pub const EXTENSION: &str = "eh3dlist";
 const MAX_LAYER_BYTES: u64 = 512 * 1024 * 1024;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -246,7 +248,14 @@ impl Project {
     }
 
     pub fn load(file: &Path) -> Result<Project, String> {
-        let text = fs::read_to_string(file).map_err(|e| format!("{}: {e}", file.display()))?;
+        let bytes = fs::read(file).map_err(|e| format!("{}: {e}", file.display()))?;
+        if bytes.starts_with(b"PK") {
+            return Err(format!(
+                "{}: this is an archive of EH3D-COMMON (.eh3dproj), not a project list (.{EXTENSION})",
+                file.display()
+            ));
+        }
+        let text = String::from_utf8(bytes).map_err(|_| format!("{}: not text", file.display()))?;
         Project::from_json(&text)
     }
 

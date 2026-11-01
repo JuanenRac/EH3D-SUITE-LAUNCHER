@@ -57,7 +57,7 @@ Chaque ligne est une partie de ce dépôt et le feu dit où elle en est aujourd'
 
 * **Le registre** (`src/registry.rs`) : chaque dépôt de la suite dit ce qu'il est dans son `eh3d.project.json` ; le launcher les lit, saute les abîmés avec la raison et indique quels programmes sont compilés.
 * **Le lanceur** (`src/launch.rs`) : lance un programme de la suite et, s'il se termine en erreur, le relance jusqu'à deux fois avec une attente qui double ; un programme qui se termine bien est laissé tranquille.
-* **Le fichier de projet** (`src/project.rs`, `.eh3dproj`) : le nom, les fichiers du travail avec leur type et SHA-256 et le zéro de travail ; à la lecture il refuse les chemins qui sortent du projet et migre le premier format. **Projets récents** (`src/recent.rs`) garde les dix derniers.
+* **Le fichier de projet** (`src/project.rs`, `.eh3dlist`) : le nom, les fichiers du travail avec leur type et SHA-256 et le zéro de travail ; à la lecture il refuse les chemins qui sortent du projet et migre le premier format. **Projets récents** (`src/recent.rs`) garde les dix derniers.
 
 ## 🧩 Rôle dans EH3D
 
@@ -173,7 +173,7 @@ EH3D-SUITE-LAUNCHER/
 
 * Il n'a pas encore de fenêtre : seules la bibliothèque et la ligne de commande existent.
 * Il n'a été essayé ni sur une machine ni avec une collection de fichiers réels, et n'a pas eu de revue indépendante.
-* Il ne découvre pas encore les machines sur le réseau, ne tient pas la suite à jour (c'est EH3D-UPDATER) et le `.eh3dproj` est un fichier JSON qui pointe vers les fichiers, pas une archive qui les contient.
+* Il ne découvre pas encore les machines sur le réseau, ne tient pas la suite à jour (c'est EH3D-UPDATER) et le `.eh3dlist` est un fichier JSON qui pointe vers les fichiers, pas une archive qui les contient.
 
 **Ensuite**
 
