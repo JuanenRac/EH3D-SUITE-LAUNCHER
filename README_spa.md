@@ -58,6 +58,7 @@ Cada línea es una parte de este repositorio y la luz dice hasta dónde llega ho
 * **El registro** (`src/registry.rs`): cada repositorio de la suite dice lo que es en su `eh3d.project.json`; el launcher los lee, salta los dañados indicando el motivo y dice qué programas están compilados.
 * **El lanzador** (`src/launch.rs`): arranca un programa de la suite y, si termina con error, lo vuelve a arrancar hasta dos veces con una espera que se duplica; un programa que termina bien se deja en paz.
 * **El fichero de proyecto** (`src/project.rs`, `.eh3dlist`): el nombre, los ficheros del trabajo con su tipo y SHA-256 y el cero de trabajo; al leer rechaza rutas que salen del proyecto y migra el primer formato. **Proyectos recientes** (`src/recent.rs`) guarda los diez últimos.
+* **Búsqueda y reinicio:** el binario de un programa se encuentra por el nombre `[[bin]]` de su `Cargo.toml` (`eh3d-camdebug`, `eh3d-pnp`...), y un programa que el operador cerró a propósito (una señal) o que rechazó sus argumentos (código de salida 1 o 2) no se vuelve a lanzar: solo un fallo grave sí.
 
 ## 🧩 Papel en EH3D
 

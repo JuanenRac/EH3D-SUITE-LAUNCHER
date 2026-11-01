@@ -58,6 +58,7 @@ Chaque ligne est une partie de ce dépôt et le feu dit où elle en est aujourd'
 * **Le registre** (`src/registry.rs`) : chaque dépôt de la suite dit ce qu'il est dans son `eh3d.project.json` ; le launcher les lit, saute les abîmés avec la raison et indique quels programmes sont compilés.
 * **Le lanceur** (`src/launch.rs`) : lance un programme de la suite et, s'il se termine en erreur, le relance jusqu'à deux fois avec une attente qui double ; un programme qui se termine bien est laissé tranquille.
 * **Le fichier de projet** (`src/project.rs`, `.eh3dlist`) : le nom, les fichiers du travail avec leur type et SHA-256 et le zéro de travail ; à la lecture il refuse les chemins qui sortent du projet et migre le premier format. **Projets récents** (`src/recent.rs`) garde les dix derniers.
+* **Recherche et relance :** le binaire d'un programme est trouvé par le nom `[[bin]]` de son `Cargo.toml` (`eh3d-camdebug`, `eh3d-pnp`...), et un programme que l'opérateur a arrêté volontairement (un signal) ou qui a refusé ses arguments (code de sortie 1 ou 2) n'est pas relancé : seul un plantage l'est.
 
 ## 🧩 Rôle dans EH3D
 

@@ -58,6 +58,7 @@ Each line is one part of this repository and the light says how far it is today.
 * **The registry** (`src/registry.rs`): every repository of the suite says what it is in its `eh3d.project.json`; the launcher reads them, skips the damaged ones with a reason and tells which programs are built.
 * **The launcher** (`src/launch.rs`): starts a program of the suite and, if it ends with an error, starts it again up to two times with a waiting time that doubles; a program that ends well is left alone.
 * **The project file** (`src/project.rs`, `.eh3dlist`): the name, the files of the job with their kind and SHA-256, and the work zero; reading refuses paths that leave the project and migrates the first format. **Recent projects** (`src/recent.rs`) keeps the last ten.
+* **Finding and restarting:** the binary of a program is found by the `[[bin]]` name of its `Cargo.toml` (`eh3d-camdebug`, `eh3d-pnp`...), and a program the operator ended on purpose (a signal) or that refused its arguments (exit code 1 or 2) is not started again: only a crash is.
 
 ## 🧩 Role in EH3D
 

@@ -58,6 +58,7 @@ Jede Zeile ist ein Teil dieses Repositorys, und die Ampel sagt, wie weit er heut
 * **Das Register** (`src/registry.rs`): Jedes Repository der Suite sagt in seiner `eh3d.project.json`, was es ist; der Launcher liest sie, überspringt beschädigte mit Begründung und meldet, welche Programme gebaut sind.
 * **Der Starter** (`src/launch.rs`): startet ein Programm der Suite und startet es bei einem Fehler bis zu zweimal neu, mit sich verdoppelnder Wartezeit; ein Programm, das gut endet, wird in Ruhe gelassen.
 * **Die Projektdatei** (`src/project.rs`, `.eh3dlist`): Name, die Dateien des Auftrags mit Art und SHA-256 und der Arbeitsnullpunkt; beim Lesen werden Pfade, die das Projekt verlassen, abgelehnt und das erste Format migriert. **Zuletzt verwendet** (`src/recent.rs`) merkt sich die letzten zehn.
+* **Finden und Neustart:** Die Programmdatei wird über den `[[bin]]`-Namen der `Cargo.toml` gefunden (`eh3d-camdebug`, `eh3d-pnp` ...); ein Programm, das der Bediener absichtlich beendet hat (Signal) oder das seine Argumente abgelehnt hat (Exit-Code 1 oder 2), wird nicht neu gestartet: nur ein Absturz.
 
 ## 🧩 Rolle in EH3D
 
