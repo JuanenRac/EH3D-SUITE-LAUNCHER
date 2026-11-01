@@ -4,6 +4,9 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+- **The programs are found by the name of their binary:** the `[[bin]]` names of the `Cargo.toml` of each repository are tried first, so `eh3d-camdebug`, `eh3d-isocam`, `eh3d-pnp` and the rest are found and started.
+- **A program the operator ended on purpose is not started again:** only a crash is repeated, not a signal or an exit code 1 or 2.
+
 ## [0.0.1] - The programs of the suite found by their manifests, started and kept alive, and the project file
 
 - **The registry:** the EH3D repositories of a folder are read by their `eh3d.project.json`; a damaged or foreign manifest is reported with its reason and does not stop the rest; a built program is found in `target/release` before `target/debug`.

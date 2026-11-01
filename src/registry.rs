@@ -104,17 +104,51 @@ pub fn discover(workspace: &Path) -> (Vec<Module>, Vec<String>) {
     (modules, problems)
 }
 
+/// The names a module's program can have: the ones its `Cargo.toml` gives to its `[[bin]]` targets first, then the name of the repository
+/// (`EH3D-DRILLPRO` -> `drillpro`) with and without the `eh3d-` prefix.
+pub fn binary_names(module: &Module) -> Vec<String> {
+    let mut names: Vec<String> = Vec::new();
+    if let Ok(text) = fs::read_to_string(module.path.join("Cargo.toml")) {
+        let mut in_bin = false;
+        for line in text.lines() {
+            let line = line.trim();
+            if line.starts_with('[') {
+                in_bin = line == "[[bin]]";
+            } else if in_bin {
+                if let Some(rest) = line.strip_prefix("name") {
+                    if let Some(value) = rest.trim_start().strip_prefix('=') {
+                        let name = value.trim().trim_matches('"').to_string();
+                        if !name.is_empty() && !names.contains(&name) {
+                            names.push(name);
+                        }
+                    }
+                }
+            }
+        }
+    }
+    for name in [module.program(), format!("eh3d-{}", module.program())] {
+        if !names.contains(&name) {
+            names.push(name);
+        }
+    }
+    names
+}
+
 /// Where the built program of a module is: `target/release` first, then `target/debug`; `None` when it has not been built.
 pub fn find_binary(module: &Module) -> Option<PathBuf> {
-    let exe = if cfg!(windows) {
-        format!("{}.exe", module.program())
-    } else {
-        module.program()
-    };
-    ["release", "debug"]
-        .iter()
-        .map(|profile| module.path.join("target").join(profile).join(&exe))
-        .find(|p| p.is_file())
+    let suffix = if cfg!(windows) { ".exe" } else { "" };
+    ["release", "debug"].iter().find_map(|profile| {
+        binary_names(module)
+            .into_iter()
+            .map(|name| {
+                module
+                    .path
+                    .join("target")
+                    .join(profile)
+                    .join(format!("{name}{suffix}"))
+            })
+            .find(|p| p.is_file())
+    })
 }
 
 /// The version that a text such as `0.0.7` stands for, as numbers; `None` when it is not one.

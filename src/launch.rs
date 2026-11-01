@@ -31,7 +31,13 @@ pub struct Outcome {
     pub gave_up: bool,
 }
 
-/// Runs `program` with `args` and waits. A failed run (a code other than 0, or a signal) is repeated up to `policy.max_restarts` times, with the waiting time doubling.
+/// True when a run that ended with `code` is worth starting again: it crashed. A signal (`None`: the operator ended it), 1 and 2
+/// (an error of use, or a program that found something to report) are not.
+fn restarts_after(code: Option<i32>) -> bool {
+    matches!(code, Some(c) if c != 0 && c != 1 && c != 2)
+}
+
+/// Runs `program` with `args` and waits. A run that crashed (a code other than 0, 1 and 2) is repeated up to `policy.max_restarts` times, with the waiting time doubling.
 pub fn supervise(program: &Path, args: &[String], policy: Policy) -> Result<Outcome, String> {
     let mut runs = 0;
     let mut wait = policy.backoff_ms;
@@ -49,7 +55,8 @@ pub fn supervise(program: &Path, args: &[String], policy: Policy) -> Result<Outc
                 gave_up: false,
             });
         }
-        if runs > policy.max_restarts {
+        // a program that the operator ended on purpose (a signal) or that refused its arguments (1, 2) is not started again: only a crash is
+        if !restarts_after(code) || runs > policy.max_restarts {
             return Ok(Outcome {
                 runs,
                 last_code: code,

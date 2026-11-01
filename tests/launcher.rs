@@ -303,3 +303,40 @@ fn a_program_that_does_not_exist_is_an_error_that_names_it() {
     .unwrap_err();
     assert!(e.contains("eh3d-no-such-program-xyz"), "{e}");
 }
+
+#[test]
+fn a_program_is_found_by_the_name_its_cargo_toml_gives_to_the_binary() {
+    let ws = temp("binname");
+    let dir = ws.join("EH3D-CAM-DEBUGGER");
+    manifest(&dir, "EH3D-CAM-DEBUGGER", "tool", "user-pc", "0.0.1");
+    fs::write(
+        dir.join("Cargo.toml"),
+        "[package]\nname = \"eh3d-cam-debugger\"\n\n[[bin]]\nname = \"eh3d-camdebug\"\npath = \"src/main.rs\"\n",
+    )
+    .unwrap();
+    let module = read_manifest(&dir).unwrap();
+    assert!(find_binary(&module).is_none());
+    let exe = if cfg!(windows) {
+        "eh3d-camdebug.exe"
+    } else {
+        "eh3d-camdebug"
+    };
+    fs::create_dir_all(dir.join("target/release")).unwrap();
+    fs::write(dir.join("target/release").join(exe), b"").unwrap();
+    assert!(find_binary(&module).unwrap().ends_with(exe));
+}
+
+#[test]
+fn a_program_that_ended_with_an_error_of_use_is_not_started_again() {
+    let (p, a) = shell(1);
+    let out = supervise(
+        &p,
+        &a,
+        Policy {
+            max_restarts: 3,
+            backoff_ms: 1,
+        },
+    )
+    .unwrap();
+    assert_eq!((out.runs, out.last_code, out.gave_up), (1, Some(1), true));
+}
