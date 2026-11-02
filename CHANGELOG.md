@@ -4,6 +4,8 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+- **The banner of the README** shows the role and the technologies of this program (it showed the text of the shared library).
+
 ## [0.0.2] - Projects in .eh3dlist, programs found by the name of their binary and no restart of a program that was ended on purpose
 
 - **The project list is `.eh3dlist`:** the file this program writes no longer shares the extension `.eh3dproj` with the archive of EH3D-COMMON. `new-project` asks for `.eh3dlist`, the old files are still read, and an archive of EH3D-COMMON given by mistake is told apart with a clear message.
