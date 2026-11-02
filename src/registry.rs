@@ -113,11 +113,18 @@ pub fn binary_names(module: &Module) -> Vec<String> {
         for line in text.lines() {
             let line = line.trim();
             if line.starts_with('[') {
-                in_bin = line == "[[bin]]";
+                in_bin = line.split('#').next().unwrap_or("").trim() == "[[bin]]";
             } else if in_bin {
                 if let Some(rest) = line.strip_prefix("name") {
                     if let Some(value) = rest.trim_start().strip_prefix('=') {
-                        let name = value.trim().trim_matches('"').to_string();
+                        // the text between the quotes; whatever follows (a comment) is not part of the name
+                        let value = value.trim();
+                        let name = match value.chars().next() {
+                            Some(q @ ('"' | '\'')) => {
+                                value[1..].split(q).next().unwrap_or_default().to_string()
+                            }
+                            _ => value.split('#').next().unwrap_or("").trim().to_string(),
+                        };
                         if !name.is_empty() && !names.contains(&name) {
                             names.push(name);
                         }

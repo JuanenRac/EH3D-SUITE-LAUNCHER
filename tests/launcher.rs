@@ -354,3 +354,553 @@ fn an_old_project_file_is_still_read_and_an_archive_of_common_is_told_apart() {
     assert!(err.contains("EH3D-COMMON"), "{err}");
     assert_eq!(eh3d_suite_launcher::project::EXTENSION, "eh3dlist");
 }
+
+// ---- more edges: layer paths, byte order marks, comments in Cargo.toml, restarts and the command line ----
+
+use eh3d_suite_launcher::project::{sha256_hex, MAX_NAME};
+use eh3d_suite_launcher::registry::{binary_names, version_numbers};
+use std::process::{Command, Output};
+
+fn cli(envs: &[(&str, &Path)], args: &[&str]) -> Output {
+    let mut c = Command::new(env!("CARGO_BIN_EXE_eh3d-launcher"));
+    c.args(args);
+    for (k, v) in envs {
+        c.env(k, v);
+    }
+    c.output().unwrap()
+}
+
+fn out(o: &Output) -> String {
+    String::from_utf8_lossy(&o.stdout).into_owned()
+}
+
+fn err(o: &Output) -> String {
+    String::from_utf8_lossy(&o.stderr).into_owned()
+}
+
+#[test]
+fn the_checksum_is_the_known_sha256_of_the_bytes() {
+    let dir = temp("sha");
+    fs::write(dir.join("abc"), b"abc").unwrap();
+    fs::write(dir.join("empty"), b"").unwrap();
+    assert_eq!(
+        sha256_hex(&dir.join("abc")).unwrap(),
+        "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+    );
+    assert_eq!(
+        sha256_hex(&dir.join("empty")).unwrap(),
+        "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    );
+    assert!(sha256_hex(&dir.join("none")).unwrap_err().contains("none"));
+    assert!(sha256_hex(&dir).is_err(), "a folder has no checksum");
+}
+
+#[test]
+fn a_layer_that_climbs_out_of_the_folder_or_is_a_folder_is_refused_when_added() {
+    let dir = temp("climb");
+    let other = temp("climb-other");
+    fs::write(other.join("x.gtl"), "x").unwrap();
+    fs::create_dir_all(dir.join("sub")).unwrap();
+    let mut p = Project::new("p").unwrap();
+    let up = Path::new("sub")
+        .join("..")
+        .join("..")
+        .join(other.file_name().unwrap())
+        .join("x.gtl");
+    assert!(p.add_layer(&dir, &up).is_err());
+    assert!(
+        p.add_layer(&dir, Path::new("sub")).is_err(),
+        "a folder is not a layer"
+    );
+    assert!(p.layers.is_empty(), "a refused layer is not half added");
+}
+
+#[test]
+fn a_file_name_with_two_dots_survives_the_round_trip_but_a_dotdot_part_does_not() {
+    let dir = temp("dots");
+    fs::write(dir.join("board..v2.gtl"), "x").unwrap();
+    let mut p = Project::new("p").unwrap();
+    p.add_layer(&dir, Path::new("board..v2.gtl")).unwrap();
+    let back = Project::from_json(&p.to_json()).unwrap();
+    assert_eq!(back, p);
+    for bad in ["a/../b.gtl", "../b.gtl", "a//b.gtl", "", "a/", "./../x"] {
+        let text = format!(r#"{{"name":"p","layers":[{{"path":"{bad}"}}]}}"#);
+        assert!(Project::from_json(&text).is_err(), "{bad:?}");
+    }
+}
+
+#[test]
+fn the_first_format_cannot_smuggle_in_a_path_outside_the_project() {
+    for bad in [
+        "../../secret.txt",
+        "/etc/passwd",
+        "C:\\\\x.gtl",
+        "a/../../b",
+    ] {
+        let text = format!(r#"{{"name":"old","layers":["{bad}"]}}"#);
+        assert!(Project::from_json(&text).is_err(), "{bad}");
+    }
+}
+
+#[test]
+fn a_project_file_with_a_byte_order_mark_is_read() {
+    let dir = temp("bom");
+    let file = dir.join("p.eh3dlist");
+    let p = Project::new("ñandú 日本").unwrap();
+    fs::write(&file, format!("\u{feff}{}", p.to_json())).unwrap();
+    assert_eq!(Project::load(&file).unwrap(), p);
+}
+
+#[test]
+fn the_name_of_a_project_has_its_limits_counted_in_characters_after_trimming() {
+    assert!(Project::new(&"é".repeat(MAX_NAME)).is_ok());
+    assert!(Project::new(&"é".repeat(MAX_NAME + 1)).is_err());
+    assert!(Project::new(&format!("  {}  ", "x".repeat(MAX_NAME))).is_ok());
+    for bad in ["", "   ", "\t", "a\nb"] {
+        assert!(Project::new(bad).is_err(), "{bad:?}");
+    }
+    let read = Project::from_json(r#"{"name":"  spaced  "}"#).unwrap();
+    assert_eq!(read.name, "spaced");
+}
+
+#[test]
+fn a_damaged_project_file_names_the_file_and_never_panics() {
+    let dir = temp("damaged");
+    let file = dir.join("p.eh3dlist");
+    let good = Project::new("board").unwrap().to_json();
+    for cut in 0..good.len() {
+        if !good.is_char_boundary(cut) {
+            continue;
+        }
+        fs::write(&file, &good[..cut]).unwrap();
+        let _ = Project::load(&file);
+    }
+    fs::write(&file, b"").unwrap();
+    assert!(Project::load(&file).is_err());
+    fs::write(&file, [0xff, 0xfe, 0xfd]).unwrap();
+    let e = Project::load(&file).unwrap_err();
+    assert!(e.contains("p.eh3dlist") && e.contains("not text"), "{e}");
+    assert!(Project::load(&dir.join("absent.eh3dlist"))
+        .unwrap_err()
+        .contains("absent"));
+}
+
+#[test]
+fn the_project_json_is_the_same_text_every_time_and_unknown_kinds_become_other() {
+    let text = r#"{"name":"p","layers":[{"path":"a.zzz","kind":"hologram","sha256":"ab"}],"zero":{"x":1.5,"y":-2}}"#;
+    let p = Project::from_json(text).unwrap();
+    assert_eq!((p.layers[0].kind, p.zero), (Kind::Other, (1.5, -2.0)));
+    assert_eq!(
+        p.to_json(),
+        Project::from_json(&p.to_json()).unwrap().to_json()
+    );
+    let zero = Project::from_json(r#"{"name":"p","zero":{"x":1e999}}"#);
+    assert!(zero.is_err(), "a number out of range is damaged JSON");
+}
+
+#[test]
+fn verify_says_a_folder_where_a_layer_should_be_is_missing_and_keeps_going() {
+    let dir = temp("verify-dir");
+    fs::create_dir_all(dir.join("a.gtl")).unwrap();
+    fs::write(dir.join("b.gtl"), "x").unwrap();
+    let p = Project::from_json(r#"{"name":"p","layers":["a.gtl","b.gtl","c.gtl"]}"#).unwrap();
+    let problems = p.verify(&dir);
+    assert_eq!(problems.len(), 2, "{problems:?}");
+    assert!(problems[0].contains("a.gtl") && problems[1].contains("c.gtl"));
+}
+
+#[test]
+fn the_recent_list_keeps_the_newest_ten_of_a_longer_file_and_the_length_limit_is_exact() {
+    let dir = temp("recent-long");
+    let file = dir.join("r.txt");
+    let lines: Vec<String> = (0..25).map(|i| format!("p{i}")).collect();
+    fs::write(&file, lines.join("\r\n")).unwrap();
+    let list = recent::load(&file);
+    assert_eq!(list.len(), recent::MAX_RECENT);
+    assert_eq!(
+        (list[0].as_str(), list[9].as_str()),
+        ("p0", "p9"),
+        "the file is newest first: the head stays"
+    );
+    fs::write(
+        &file,
+        format!("{}\n{}\n", "y".repeat(4095), "z".repeat(4096)),
+    )
+    .unwrap();
+    assert_eq!(recent::load(&file).len(), 1);
+    // a path with non-ASCII letters makes the trip
+    let mut one = Vec::new();
+    recent::remember(&mut one, "C:\\proyectos\\diseño\\placa ñ.eh3dlist");
+    recent::save(&file, &one).unwrap();
+    assert_eq!(recent::load(&file), one);
+}
+
+#[test]
+fn remembering_an_entry_already_in_the_list_moves_it_without_growing_the_list() {
+    let mut list: Vec<String> = ["c", "b", "a"].iter().map(|s| s.to_string()).collect();
+    recent::remember(&mut list, "a");
+    assert_eq!(list, ["a", "c", "b"]);
+    recent::remember(&mut list, "a");
+    assert_eq!(list, ["a", "c", "b"]);
+}
+
+#[test]
+fn versions_with_a_different_number_of_parts_or_signs_are_compared_sensibly() {
+    assert!(
+        !is_newer("0.8.0.0", "0.8.0"),
+        "a missing part counts as zero"
+    );
+    assert!(!is_newer("0.8", "0.8.0.0"));
+    assert!(is_newer("1", "0.9.9.9"));
+    assert!(is_newer("0.0.7.1", "0.0.7"));
+    assert!(!is_newer("", "0.0.1") && !is_newer("0.0.1", ""));
+    assert!(!is_newer("1..2", "1.0.1") && !is_newer("1.0.2", "1..1"));
+    assert!(!is_newer("0.0.9-beta", "0.0.1"));
+    assert_eq!(version_numbers("0.8.0.1"), Some(vec![0, 8, 0, 1]));
+    assert_eq!(version_numbers("1.2.x"), None);
+    assert_eq!(version_numbers(" 1"), None);
+    assert_eq!(
+        version_numbers("99999999999999999999999"),
+        None,
+        "too big for a number"
+    );
+}
+
+#[test]
+fn a_manifest_needs_text_fields_and_a_version_of_at_least_three_numbers() {
+    let ws = temp("manifest-edges");
+    let dir = ws.join("m");
+    fs::create_dir_all(&dir).unwrap();
+    let write = |body: &str| fs::write(dir.join("eh3d.project.json"), body).unwrap();
+    let full = |version: &str| {
+        format!(
+            r#"{{"ecosystem":"EH3D","name":"EH3D-M","version":{version},"role":"tool","maturity":"x","deployment_target":"user-pc"}}"#
+        )
+    };
+    for bad in [
+        "\"0.1\"",
+        "\"1.2.3.\"",
+        "\"1..3\"",
+        "\"v1.2.3\"",
+        "\"1.2.3-rc1\"",
+        "7",
+        "null",
+        "\"\"",
+    ] {
+        write(&full(bad));
+        assert!(read_manifest(&dir).is_err(), "{bad}");
+    }
+    for good in ["\"0.0.1\"", "\"0.8.0.1\"", "\"10.20.30.40.50\""] {
+        write(&full(good));
+        assert!(read_manifest(&dir).is_ok(), "{good}");
+    }
+    write(r#"["EH3D"]"#);
+    assert!(read_manifest(&dir).unwrap_err().contains("missing"));
+    write(&full("\"0.0.1\"").replace(r#""EH3D","name""#, r#""eh3d","name""#));
+    assert!(
+        read_manifest(&dir).unwrap_err().contains("not EH3D"),
+        "the ecosystem is compared exactly"
+    );
+}
+
+#[test]
+fn a_workspace_that_does_not_exist_is_one_problem_and_no_modules() {
+    let (modules, problems) = discover(&temp("ws-none").join("nowhere"));
+    assert!(modules.is_empty());
+    assert_eq!(problems.len(), 1);
+    assert!(problems[0].contains("cannot be read"), "{problems:?}");
+}
+
+#[test]
+fn the_modules_come_out_in_alphabetical_order_whatever_the_folders_are_called() {
+    let ws = temp("order");
+    manifest(&ws.join("zzz"), "EH3D-AAA", "tool", "user-pc", "0.0.1");
+    manifest(&ws.join("aaa"), "EH3D-ZZZ", "tool", "user-pc", "0.0.1");
+    manifest(&ws.join("mmm"), "EH3D-MMM", "cli", "user-pc", "0.0.1");
+    let (modules, problems) = discover(&ws);
+    assert!(problems.is_empty());
+    assert_eq!(
+        modules.iter().map(|m| m.name.as_str()).collect::<Vec<_>>(),
+        ["EH3D-AAA", "EH3D-MMM", "EH3D-ZZZ"]
+    );
+}
+
+#[test]
+fn only_a_tool_ui_or_cli_for_the_user_pc_is_a_desktop_program() {
+    let ws = temp("desktop");
+    for (i, (role, target, want)) in [
+        ("tool", "user-pc", true),
+        ("ui", "user-pc", true),
+        ("cli", "user-pc", true),
+        ("service", "user-pc", false),
+        ("tool", "mcu", false),
+        ("tool", "cm5", false),
+        ("firmware", "mcu", false),
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        let d = ws.join(format!("m{i}"));
+        manifest(&d, &format!("EH3D-M{i}"), role, target, "0.0.1");
+        assert_eq!(
+            read_manifest(&d).unwrap().is_desktop(),
+            want,
+            "{role}/{target}"
+        );
+    }
+}
+
+#[test]
+fn a_binary_name_in_cargo_toml_may_have_a_comment_single_quotes_and_come_after_other_tables() {
+    let ws = temp("binnames");
+    let dir = ws.join("EH3D-FOO");
+    manifest(&dir, "EH3D-FOO", "tool", "user-pc", "0.0.1");
+    fs::write(
+        dir.join("Cargo.toml"),
+        "[package]\nname = \"not-this\"\n\n[[bin]] # the program\nname = \"foo-cmd\" # what a person types\npath = \"src/main.rs\"\n\n[[bin]]\nname = 'second'\n\n[dependencies]\nname = \"nor-this\"\n",
+    )
+    .unwrap();
+    let names = binary_names(&read_manifest(&dir).unwrap());
+    assert_eq!(names, ["foo-cmd", "second", "foo", "eh3d-foo"]);
+}
+
+#[test]
+fn a_folder_named_like_the_program_is_not_the_program() {
+    let ws = temp("folderbin");
+    let dir = ws.join("EH3D-BAR");
+    manifest(&dir, "EH3D-BAR", "tool", "user-pc", "0.0.1");
+    let exe = if cfg!(windows) { "bar.exe" } else { "bar" };
+    fs::create_dir_all(dir.join("target/release").join(exe)).unwrap();
+    assert!(find_binary(&read_manifest(&dir).unwrap()).is_none());
+    fs::create_dir_all(dir.join("target/debug")).unwrap();
+    fs::write(dir.join("target/debug").join(exe), b"").unwrap();
+    assert!(find_binary(&read_manifest(&dir).unwrap())
+        .unwrap()
+        .to_string_lossy()
+        .contains("debug"));
+}
+
+#[test]
+fn a_program_that_crashes_once_and_then_works_is_run_twice_and_the_wait_doubles() {
+    let dir = temp("flaky");
+    let marker = dir.join("seen");
+    let script = dir.join(if cfg!(windows) {
+        "flaky.cmd"
+    } else {
+        "flaky.sh"
+    });
+    let (prog, args) = if cfg!(windows) {
+        fs::write(
+            &script,
+            "@if exist \"%~dp0seen\" exit /b 0\r\n@type nul > \"%~dp0seen\"\r\n@exit /b 3\r\n",
+        )
+        .unwrap();
+        ("cmd", vec!["/C".to_string(), script.display().to_string()])
+    } else {
+        fs::write(
+            &script,
+            format!(
+                "if [ -f '{0}' ]; then exit 0; else touch '{0}'; exit 3; fi\n",
+                marker.display()
+            ),
+        )
+        .unwrap();
+        ("sh", vec![script.display().to_string()])
+    };
+    let t = std::time::Instant::now();
+    let o = supervise(
+        Path::new(prog),
+        &args,
+        Policy {
+            max_restarts: 2,
+            backoff_ms: 60,
+        },
+    )
+    .unwrap();
+    assert_eq!((o.runs, o.last_code, o.gave_up), (2, Some(0), false));
+    assert!(
+        t.elapsed() >= std::time::Duration::from_millis(60),
+        "it waited before the second run"
+    );
+    // three crashes with a wait of 40 then 80 milliseconds take at least 120
+    let (p, a) = shell(7);
+    let t = std::time::Instant::now();
+    let o = supervise(
+        &p,
+        &a,
+        Policy {
+            max_restarts: 2,
+            backoff_ms: 40,
+        },
+    )
+    .unwrap();
+    assert_eq!((o.runs, o.gave_up), (3, true));
+    assert!(
+        t.elapsed() >= std::time::Duration::from_millis(120),
+        "{:?}",
+        t.elapsed()
+    );
+}
+
+#[test]
+fn a_program_that_ends_with_code_two_is_not_started_again() {
+    let (p, a) = shell(2);
+    let o = supervise(
+        &p,
+        &a,
+        Policy {
+            max_restarts: 5,
+            backoff_ms: 1,
+        },
+    )
+    .unwrap();
+    assert_eq!((o.runs, o.last_code, o.gave_up), (1, Some(2), true));
+}
+
+#[test]
+fn the_command_line_writes_a_project_adds_layers_and_notices_a_change() {
+    let dir = temp("cli_project");
+    let data = temp("cli_project_data");
+    let envs = [("EH3D_LAUNCHER_DIR", data.as_path())];
+    fs::write(dir.join("top.gtl"), "G04*\nM02*\n").unwrap();
+    let file = dir.join("board.eh3dlist");
+    let (f, l) = (file.to_str().unwrap(), dir.join("top.gtl"));
+    let l = l.to_str().unwrap();
+    assert!(cli(&envs, &["new-project", f, "ñandú"]).status.success());
+    let again = cli(&envs, &["new-project", f, "other"]);
+    assert_eq!(again.status.code(), Some(1));
+    assert!(err(&again).contains("already exists"));
+    assert_eq!(
+        Project::load(&file).unwrap().name,
+        "ñandú",
+        "the second call did not overwrite"
+    );
+    let wrong = cli(
+        &envs,
+        &["new-project", dir.join("x.eh3dproj").to_str().unwrap(), "x"],
+    );
+    assert_eq!(wrong.status.code(), Some(1));
+    assert!(err(&wrong).contains("eh3dlist"));
+    assert!(cli(&envs, &["add-layer", f, l]).status.success());
+    let twice = cli(&envs, &["add-layer", f, l]);
+    assert!(
+        !twice.status.success() && err(&twice).contains("already"),
+        "{}",
+        err(&twice)
+    );
+    let ok = cli(&envs, &["verify", f]);
+    assert!(
+        ok.status.success() && out(&ok).contains("1 files"),
+        "{}",
+        out(&ok)
+    );
+    fs::write(dir.join("top.gtl"), "changed").unwrap();
+    let bad = cli(&envs, &["verify", f]);
+    assert_eq!(bad.status.code(), Some(1));
+    assert!(err(&bad).contains("top.gtl") && err(&bad).contains("changed"));
+    let recent = out(&cli(&envs, &["recent"]));
+    assert_eq!(recent.lines().count(), 1, "{recent}");
+}
+
+#[test]
+fn the_command_line_refuses_a_layer_from_another_folder_and_a_missing_file() {
+    let dir = temp("cli_outside");
+    let other = temp("cli_outside_other");
+    let data = temp("cli_outside_data");
+    let envs = [("EH3D_LAUNCHER_DIR", data.as_path())];
+    fs::write(other.join("x.gtl"), "x").unwrap();
+    let file = dir.join("p.eh3dlist");
+    let f = file.to_str().unwrap();
+    cli(&envs, &["new-project", f, "p"]);
+    let r = cli(
+        &envs,
+        &["add-layer", f, other.join("x.gtl").to_str().unwrap()],
+    );
+    assert_eq!(r.status.code(), Some(1));
+    assert!(err(&r).contains("not under"));
+    let r = cli(
+        &envs,
+        &["add-layer", f, dir.join("none.gtl").to_str().unwrap()],
+    );
+    assert_eq!(r.status.code(), Some(1));
+    assert!(err(&r).contains("none.gtl"));
+    assert_eq!(Project::load(&file).unwrap().layers.len(), 0);
+    for args in [
+        vec!["verify"],
+        vec!["add-layer", f],
+        vec!["new-project"],
+        vec!["recent", "add"],
+        vec!["nonsense"],
+    ] {
+        assert_eq!(cli(&envs, &args).status.code(), Some(1), "{args:?}");
+    }
+}
+
+#[test]
+fn the_command_line_lists_only_desktop_programs_unless_asked_and_launch_explains_why_not() {
+    let ws = temp("cli_list");
+    let data = temp("cli_list_data");
+    manifest(
+        &ws.join("EH3D-TOOLX"),
+        "EH3D-TOOLX",
+        "tool",
+        "user-pc",
+        "0.1.2",
+    );
+    manifest(
+        &ws.join("EH3D-NODE-Y"),
+        "EH3D-NODE-Y",
+        "firmware",
+        "mcu",
+        "0.0.3",
+    );
+    fs::create_dir_all(ws.join("BAD")).unwrap();
+    fs::write(ws.join("BAD/eh3d.project.json"), "{").unwrap();
+    let envs = [
+        ("EH3D_WORKSPACE", ws.as_path()),
+        ("EH3D_LAUNCHER_DIR", data.as_path()),
+    ];
+    let list = cli(&envs, &["list"]);
+    assert!(list.status.success());
+    assert!(
+        out(&list).contains("EH3D-TOOLX")
+            && out(&list).contains("not built")
+            && !out(&list).contains("NODE-Y"),
+        "{}",
+        out(&list)
+    );
+    assert!(
+        err(&list).contains("skipped"),
+        "a broken manifest is reported, not fatal"
+    );
+    assert!(out(&cli(&envs, &["list", "--all"])).contains("EH3D-NODE-Y"));
+    let node = cli(&envs, &["launch", "node-y"]);
+    assert_eq!(node.status.code(), Some(1));
+    assert!(
+        err(&node).contains("not a program for this computer"),
+        "{}",
+        err(&node)
+    );
+    let unbuilt = cli(&envs, &["launch", "TOOLX"]);
+    assert!(
+        err(&unbuilt).contains("has not been built"),
+        "{}",
+        err(&unbuilt)
+    );
+    let nobody = cli(&envs, &["launch", "ghost"]);
+    assert!(err(&nobody).contains("no such program"), "{}", err(&nobody));
+    assert_eq!(cli(&envs, &["launch"]).status.code(), Some(1));
+}
+
+#[test]
+fn the_recent_command_puts_a_file_at_the_head_once() {
+    let data = temp("cli_recent");
+    let envs = [("EH3D_LAUNCHER_DIR", data.as_path())];
+    for f in ["a.eh3dlist", "b.eh3dlist", "a.eh3dlist"] {
+        assert!(cli(&envs, &["recent", "add", f]).status.success());
+    }
+    assert_eq!(
+        out(&cli(&envs, &["recent"])).lines().collect::<Vec<_>>(),
+        ["a.eh3dlist", "b.eh3dlist"]
+    );
+}

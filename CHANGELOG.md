@@ -5,6 +5,7 @@ All notable changes to this project are documented here.
 ## [Unreleased]
 
 - **The banner of the README** shows the role and the technologies of this program (it showed the text of the shared library).
+- **More tests:** the project list is checked with paths that climb out of the folder, file names with two dots, a byte order mark and the first format; the manifests, the list of recent projects, the restarts of a program that crashes and every command of the command line. A path in the first format of the project list is now checked like any other, and a file name with two dots no longer makes a saved project unreadable, a byte order mark is skipped, and a name of a program in Cargo.toml followed by a comment is read.
 
 ## [0.0.2] - Projects in .eh3dlist, programs found by the name of their binary and no restart of a program that was ended on purpose
 

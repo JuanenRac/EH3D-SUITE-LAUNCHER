@@ -103,6 +103,13 @@ pub fn sha256_hex(path: &Path) -> Result<String, String> {
         .collect())
 }
 
+/// A layer path as the project writes it: relative, with `/`, no empty part, no `..` part (a file name that merely contains two dots is fine), no drive or stream colon.
+fn is_inside_path(path: &str) -> bool {
+    !path.contains(':')
+        && !path.contains('\\')
+        && path.split('/').all(|part| !part.is_empty() && part != "..")
+}
+
 fn check_name(name: &str) -> Result<(), String> {
     let n = name.trim();
     if n.is_empty() {
@@ -172,8 +179,8 @@ impl Project {
     }
 
     pub fn from_json(text: &str) -> Result<Project, String> {
-        let v: Value =
-            serde_json::from_str(text).map_err(|e| format!("the project file is not JSON: {e}"))?;
+        let v: Value = serde_json::from_str(text.trim_start_matches('\u{feff}'))
+            .map_err(|e| format!("the project file is not JSON: {e}"))?;
         let schema = v
             .get("schema_version")
             .and_then(|s| s.as_u64())
@@ -197,6 +204,11 @@ impl Project {
         {
             if let Some(path) = item.as_str() {
                 // format 0: a list of paths without kind or checksum
+                if !is_inside_path(path) {
+                    return Err(format!(
+                        "{path}: a layer must be a relative path inside the project"
+                    ));
+                }
                 layers.push(Layer {
                     path: path.to_string(),
                     kind: kind_of_path(Path::new(path)),
@@ -207,11 +219,7 @@ impl Project {
                     .get("path")
                     .and_then(|p| p.as_str())
                     .ok_or("a layer has no path")?;
-                if path.starts_with('/')
-                    || path.contains("..")
-                    || path.contains(':')
-                    || path.contains('\\')
-                {
+                if !is_inside_path(path) {
                     return Err(format!(
                         "{path}: a layer must be a relative path inside the project"
                     ));
