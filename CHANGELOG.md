@@ -3,6 +3,9 @@
 All notable changes to this project are documented here.
 
 ## [Unreleased]
+
+## [0.0.4] - Audit fixes, the new reading limits, tests and the application icon
+
 - **Brand:** Add the application icon and the logos of the program.
 - **Shared checks updated:** the validator also compares the badge and the Version row of the README with the manifest, fails when one of its checks cannot run, and the CHANGELOG step of the workflow reads the base branch from the environment.
 - **Safer files and options:** the project list and the recent list are written through a temporary file, a manifest with a byte order mark is read, and `--workspace` after `--` is left to the program that is started.
