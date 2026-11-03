@@ -6,6 +6,7 @@ All notable changes to this project are documented here.
 - **`launch` starts only what it should:** it runs only the known programs of the suite, from the folder named by `workspace` in `launcher.cfg` (not the current directory), and refuses a binary name with separators or dots; the refusal is written in the eight languages.
 - **`verify` is honest:** a layer with no checksum is reported as not verified instead of "unchanged".
 - **The workflows are hardened:** every action is pinned by its commit with its version in a comment, and the checkouts keep no credentials.
+- **More tests:** how files are told apart, the versions that are compared, the list of recent projects, and the project files that are damaged or hold files outside their folder.
 
 ## [0.0.3] - Reusable validation and CI hardening
 
