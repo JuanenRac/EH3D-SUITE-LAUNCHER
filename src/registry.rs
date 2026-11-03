@@ -79,6 +79,8 @@ pub fn program_name(repo: &str) -> String {
 pub fn read_manifest(dir: &Path) -> Result<Module, String> {
     let file = dir.join("eh3d.project.json");
     let text = fs::read_to_string(&file).map_err(|e| format!("{}: {e}", file.display()))?;
+    // a manifest saved with a byte order mark is still a manifest
+    let text = text.trim_start_matches('\u{feff}').to_string();
     let json: serde_json::Value =
         serde_json::from_str(&text).map_err(|e| format!("{}: not JSON: {e}", file.display()))?;
     let get = |key: &str| -> Result<String, String> {

@@ -95,7 +95,9 @@ fn run(mut args: Vec<String>) -> Result<(), String> {
             let lang = language();
             let config = data_dir();
             let ws = configured_workspace(&config, lang)?;
-            if args.iter().any(|a| a == "--workspace") {
+            // only the options before `--` are the launcher's: the rest belongs to the program that is started
+            let own = args.iter().position(|a| a == "--").unwrap_or(args.len());
+            if args[..own].iter().any(|a| a == "--workspace") {
                 return Err(message(
                     Msg::NoWorkspace,
                     lang,

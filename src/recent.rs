@@ -36,5 +36,5 @@ pub fn save(path: &Path, list: &[String]) -> std::io::Result<()> {
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent)?;
     }
-    fs::write(path, list.join("\n") + "\n")
+    crate::project::write_atomic(path, &(list.join("\n") + "\n"))
 }

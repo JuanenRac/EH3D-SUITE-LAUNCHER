@@ -1063,3 +1063,49 @@ fn verify_does_not_say_unchanged_for_a_layer_without_a_checksum() {
         err(&o)
     );
 }
+
+#[test]
+fn a_manifest_with_a_byte_order_mark_is_read() {
+    let dir = temp("bom_manifest");
+    manifest(&dir, "EH3D-DRILLPRO", "tool", "user-pc", "0.1.2");
+    let text = fs::read_to_string(dir.join("eh3d.project.json")).unwrap();
+    fs::write(dir.join("eh3d.project.json"), format!("\u{feff}{text}")).unwrap();
+    assert_eq!(read_manifest(&dir).unwrap().name, "EH3D-DRILLPRO");
+}
+
+#[test]
+fn the_options_after_the_double_dash_belong_to_the_program_that_is_started() {
+    let ws = temp("dashdash_ws");
+    let data = temp("dashdash_data");
+    manifest(
+        &ws.join("EH3D-DRILLPRO"),
+        "EH3D-DRILLPRO",
+        "tool",
+        "user-pc",
+        "0.1.2",
+    );
+    fs::write(
+        data.join("launcher.cfg"),
+        format!("workspace = {}\n", ws.display()),
+    )
+    .unwrap();
+    let envs = [
+        ("EH3D_LAUNCHER_DIR", data.as_path()),
+        ("LC_ALL", Path::new("en")),
+    ];
+    // `--workspace` after `--` is an argument of drillpro, not of the launcher: the program is simply not built
+    let o = cli(&envs, &["launch", "drillpro", "--", "--workspace", "x"]);
+    assert!(err(&o).contains("has not been built"), "{}", err(&o));
+}
+
+#[test]
+fn the_project_list_and_the_recent_list_are_written_through_a_temporary_file() {
+    let dir = temp("atomic_save");
+    let list = dir.join("p.eh3dlist");
+    Project::new("p").unwrap().save(&list).unwrap();
+    assert!(list.is_file() && !dir.join("p.eh3dlist.tmp").exists());
+    let recent_file = dir.join("recent.txt");
+    recent::save(&recent_file, &["a.eh3dlist".to_string()]).unwrap();
+    assert!(recent_file.is_file() && !dir.join("recent.txt.tmp").exists());
+    assert_eq!(recent::load(&recent_file), vec!["a.eh3dlist".to_string()]);
+}

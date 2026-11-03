@@ -86,6 +86,22 @@ pub struct Project {
     pub zero: (f64, f64),
 }
 
+/// Writes `text` to a temporary file beside `file` and renames it over `file`, so that a cut or a full disk leaves the old file whole.
+pub fn write_atomic(file: &Path, text: &str) -> std::io::Result<()> {
+    let mut tmp = file.as_os_str().to_owned();
+    tmp.push(".tmp");
+    let tmp = std::path::PathBuf::from(tmp);
+    if let Err(e) = fs::write(&tmp, text) {
+        let _ = fs::remove_file(&tmp);
+        return Err(e);
+    }
+    if let Err(e) = fs::rename(&tmp, file) {
+        let _ = fs::remove_file(&tmp);
+        return Err(e);
+    }
+    Ok(())
+}
+
 pub fn sha256_hex(path: &Path) -> Result<String, String> {
     let meta = fs::metadata(path).map_err(|e| format!("{}: {e}", path.display()))?;
     if meta.len() > MAX_LAYER_BYTES {
@@ -252,7 +268,7 @@ impl Project {
     }
 
     pub fn save(&self, file: &Path) -> Result<(), String> {
-        fs::write(file, self.to_json()).map_err(|e| format!("{}: {e}", file.display()))
+        write_atomic(file, &self.to_json()).map_err(|e| format!("{}: {e}", file.display()))
     }
 
     pub fn load(file: &Path) -> Result<Project, String> {
