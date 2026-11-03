@@ -18,7 +18,7 @@ jobs:
   # (the manifest, the documents, the pictures of the README). The reference is a full commit, so
   # a change there reaches this repository only when this line is moved.
   validate:
-    uses: JuanenRac/EH3D-DOCS/.github/workflows/validate.yml@a117a8c320e92305e6acba1a4e9f96ce4d9574e2
+    uses: JuanenRac/EH3D-DOCS/.github/workflows/validate.yml@9a81ff1df03801c80300e57bb66a707c0c756f19
     with:
       python-version: "3.12"
       check-pictures: true
