@@ -121,7 +121,7 @@ EH3D-SUITE-LAUNCHER/
 
 ## ⚙️ Konfiguration
 
-Es gibt noch keine Konfigurationsdatei: Was die Person wählt, wird als Argument der Kommandozeile angegeben (siehe Schnittstellen), und jeder Standardwert steht in der Hilfe des Befehls (`eh3d-launcher help`). Die festen Grenzen stehen als benannte Konstanten im Code und sind durch Tests abgedeckt.
+Die einzige Konfigurationsdatei ist `launcher.cfg` im Ordner des Launchers, nur von `launch` gelesen: Ihre Zeile `workspace = VOLLSTÄNDIGER_PFAD` ist der Ordner, aus dem Programme gestartet werden (nur bekannte Programme der Suite). Davon abgesehen: Was die Person wählt, wird als Argument der Kommandozeile angegeben (siehe Schnittstellen), und jeder Standardwert steht in der Hilfe des Befehls (`eh3d-launcher help`). Die festen Grenzen stehen als benannte Konstanten im Code und sind durch Tests abgedeckt.
 
 ## 🚀 Schnellstart
 

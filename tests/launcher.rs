@@ -856,9 +856,27 @@ fn the_command_line_lists_only_desktop_programs_unless_asked_and_launch_explains
     );
     fs::create_dir_all(ws.join("BAD")).unwrap();
     fs::write(ws.join("BAD/eh3d.project.json"), "{").unwrap();
+    manifest(
+        &ws.join("EH3D-DRILLPRO"),
+        "EH3D-DRILLPRO",
+        "tool",
+        "user-pc",
+        "0.1.2",
+    );
+    // launch takes the folder from the configuration file, not from the environment
+    fs::write(
+        data.join("launcher.cfg"),
+        format!(
+            "workspace = {}
+",
+            ws.display()
+        ),
+    )
+    .unwrap();
     let envs = [
         ("EH3D_WORKSPACE", ws.as_path()),
         ("EH3D_LAUNCHER_DIR", data.as_path()),
+        ("LC_ALL", Path::new("en")),
     ];
     let list = cli(&envs, &["list"]);
     assert!(list.status.success());
@@ -881,11 +899,17 @@ fn the_command_line_lists_only_desktop_programs_unless_asked_and_launch_explains
         "{}",
         err(&node)
     );
-    let unbuilt = cli(&envs, &["launch", "TOOLX"]);
+    let unbuilt = cli(&envs, &["launch", "DRILLPRO"]);
     assert!(
         err(&unbuilt).contains("has not been built"),
         "{}",
         err(&unbuilt)
+    );
+    let unknown = cli(&envs, &["launch", "TOOLX"]);
+    assert!(
+        err(&unknown).contains("not a known program of the suite"),
+        "{}",
+        err(&unknown)
     );
     let nobody = cli(&envs, &["launch", "ghost"]);
     assert!(err(&nobody).contains("no such program"), "{}", err(&nobody));
@@ -902,5 +926,140 @@ fn the_recent_command_puts_a_file_at_the_head_once() {
     assert_eq!(
         out(&cli(&envs, &["recent"])).lines().collect::<Vec<_>>(),
         ["a.eh3dlist", "b.eh3dlist"]
+    );
+}
+
+#[test]
+fn launch_runs_nothing_from_a_folder_the_configuration_does_not_name() {
+    let ws = temp("launch_cfg_ws");
+    let data = temp("launch_cfg_data");
+    manifest(
+        &ws.join("EH3D-DRILLPRO"),
+        "EH3D-DRILLPRO",
+        "tool",
+        "user-pc",
+        "0.1.2",
+    );
+    let envs = [
+        ("EH3D_WORKSPACE", ws.as_path()),
+        ("EH3D_LAUNCHER_DIR", data.as_path()),
+        ("LC_ALL", Path::new("en")),
+    ];
+    // no configuration file: the folder from the environment or the current directory is not used
+    let none = cli(&envs, &["launch", "drillpro"]);
+    assert_eq!(none.status.code(), Some(1));
+    assert!(
+        err(&none).contains("launcher.cfg") && err(&none).contains("workspace = FULL_PATH"),
+        "{}",
+        err(&none)
+    );
+    // a folder that is not a full path is refused
+    fs::write(
+        data.join("launcher.cfg"),
+        "workspace = ..
+",
+    )
+    .unwrap();
+    assert!(err(&cli(&envs, &["launch", "drillpro"])).contains("launcher.cfg"));
+    // the folder of the command line is not accepted either
+    fs::write(
+        data.join("launcher.cfg"),
+        format!(
+            "workspace = {}
+",
+            ws.display()
+        ),
+    )
+    .unwrap();
+    let flag = cli(
+        &envs,
+        &["launch", "drillpro", "--workspace", ws.to_str().unwrap()],
+    );
+    assert_eq!(flag.status.code(), Some(1));
+    // the message of an unknown program comes in the language of the person
+    manifest(
+        &ws.join("EH3D-SOMETHING"),
+        "EH3D-SOMETHING",
+        "tool",
+        "user-pc",
+        "0.1.2",
+    );
+    for (lang, word) in [
+        ("es", "no es un programa conocido"),
+        ("de", "kein bekanntes Programm"),
+        ("fr", "programme inconnu"),
+        ("it", "non è un programma noto"),
+        ("ja", "既知のプログラムではありません"),
+        ("zh", "不是套件已知的程序"),
+        ("pt", "não é um programa conhecido"),
+        ("en", "not a known program"),
+    ] {
+        let envs = [
+            ("EH3D_LAUNCHER_DIR", data.as_path()),
+            ("LC_ALL", Path::new(lang)),
+        ];
+        let e = err(&cli(&envs, &["launch", "something"]));
+        assert!(e.contains(word), "{lang}: {e}");
+    }
+}
+
+#[test]
+fn a_binary_name_with_a_separator_or_dots_is_not_a_name() {
+    use eh3d_suite_launcher::registry::valid_bin_name;
+    for bad in [
+        "",
+        "..",
+        "..\\..\\x",
+        "../x",
+        "a/b",
+        "C:x",
+        ".hidden",
+        "a..b",
+    ] {
+        assert!(!valid_bin_name(bad), "{bad}");
+    }
+    for good in ["eh3d-tools", "drillpro", "tool_2.exe"] {
+        assert!(valid_bin_name(good), "{good}");
+    }
+    let dir = temp("bin_names");
+    manifest(&dir, "EH3D-DRILLPRO", "tool", "user-pc", "0.1.2");
+    fs::write(
+        dir.join("Cargo.toml"),
+        "[package]
+name = \"x\"
+[[bin]]
+name = \"..\\..\\evil\"
+[[bin]]
+name = \"good-bin\"
+",
+    )
+    .unwrap();
+    let m = read_manifest(&dir).unwrap();
+    let names = binary_names(&m);
+    assert!(names.contains(&"good-bin".to_string()));
+    assert!(
+        names.iter().all(|n| !n.contains('\\') && !n.contains("..")),
+        "{names:?}"
+    );
+}
+
+#[test]
+fn verify_does_not_say_unchanged_for_a_layer_without_a_checksum() {
+    let dir = temp("verify_unchecked");
+    let list = dir.join("p.eh3dlist");
+    fs::write(dir.join("a.gbr"), "changed").unwrap();
+    fs::write(
+        &list,
+        r#"{"name":"p","layers":[{"path":"a.gbr","kind":"gerber"}]}"#,
+    )
+    .unwrap();
+    let envs: [(&str, &Path); 0] = [];
+    let o = cli(&envs, &["verify", list.to_str().unwrap()]);
+    assert!(!out(&o).contains("unchanged"), "{}{}", out(&o), err(&o));
+    assert!(
+        out(&o).contains("not verified") && out(&o).contains("a.gbr"),
+        "{}{}",
+        out(&o),
+        err(&o)
     );
 }

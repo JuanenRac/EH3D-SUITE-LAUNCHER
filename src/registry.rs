@@ -26,6 +26,48 @@ impl Module {
     }
 }
 
+/// The programs of the suite that `launch` starts: only these, and only from the folder the configuration file names.
+pub const KNOWN_PROGRAMS: &[&str] = &[
+    "EH3D-AUTOLEVEL",
+    "EH3D-BUNGARD-GUI",
+    "EH3D-CAM-DEBUGGER",
+    "EH3D-DESIGN-EXPLORER",
+    "EH3D-DESIGN-VERIFIER",
+    "EH3D-DRILLPRO",
+    "EH3D-GERBERVIEWER",
+    "EH3D-ISOCAM",
+    "EH3D-LASER-CAM",
+    "EH3D-MOTIONCNC",
+    "EH3D-PHOENIX-CAD",
+    "EH3D-PHOENIX-PCB",
+    "EH3D-PNP-MANAGER",
+    "EH3D-PROJECT-PASSPORT",
+    "EH3D-ROUTEPRO",
+    "EH3D-STENCILCAM",
+    "EH3D-SUITE-LAUNCHER",
+    "EH3D-THERMAL-LAB",
+    "EH3D-TOOL-MANAGER",
+    "EH3D-UPDATER",
+    "EH3D-VALIDATION-LAB",
+    "EH3D-VISION-STUDIO",
+];
+
+/// True when the module is one of the programs of the suite (the name of the manifest is on the list).
+pub fn is_known(module: &Module) -> bool {
+    KNOWN_PROGRAMS.contains(&module.name.as_str())
+}
+
+/// A name a program file can have: letters, digits, `_`, `-` and `.` inside the name, never a separator, never `..`, never a drive.
+pub fn valid_bin_name(name: &str) -> bool {
+    !name.is_empty()
+        && name.len() <= 64
+        && !name.starts_with('.')
+        && !name.contains("..")
+        && name
+            .bytes()
+            .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'_' | b'-' | b'.'))
+}
+
 /// `EH3D-DRILLPRO` -> `drillpro`; `EH3D-BUNGARD-GUI` -> `bungard-gui`.
 pub fn program_name(repo: &str) -> String {
     repo.strip_prefix("EH3D-")
@@ -125,7 +167,7 @@ pub fn binary_names(module: &Module) -> Vec<String> {
                             }
                             _ => value.split('#').next().unwrap_or("").trim().to_string(),
                         };
-                        if !name.is_empty() && !names.contains(&name) {
+                        if valid_bin_name(&name) && !names.contains(&name) {
                             names.push(name);
                         }
                     }
@@ -134,7 +176,7 @@ pub fn binary_names(module: &Module) -> Vec<String> {
         }
     }
     for name in [module.program(), format!("eh3d-{}", module.program())] {
-        if !names.contains(&name) {
+        if valid_bin_name(&name) && !names.contains(&name) {
             names.push(name);
         }
     }

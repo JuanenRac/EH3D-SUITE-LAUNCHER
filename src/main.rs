@@ -2,10 +2,12 @@
 // Copyright (C) 2026 JuanenRac (Electro Hobby 3D). GPL-3.0-or-later.
 #![forbid(unsafe_code)]
 
-use eh3d_suite_launcher::launch::{supervise, Policy};
+use eh3d_suite_launcher::launch::{
+    configured_workspace, is_inside, language, message, supervise, Msg, Policy, CONFIG_FILE,
+};
 use eh3d_suite_launcher::project::Project;
 use eh3d_suite_launcher::recent;
-use eh3d_suite_launcher::registry::{discover, find_binary, Module};
+use eh3d_suite_launcher::registry::{discover, find_binary, is_known, Module};
 use std::env;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
@@ -13,13 +15,14 @@ use std::process::ExitCode;
 const HELP: &str = "eh3d-launcher: the hub of the EH3D Fabrication Suite
 
   eh3d-launcher list [--workspace DIR] [--all]     the programs found (--all also lists firmware, services and apps)
-  eh3d-launcher launch NAME [--workspace DIR] [-- ARGS...]    start a program, again up to 2 times if it fails
+  eh3d-launcher launch NAME [-- ARGS...]           start a program of the suite, again up to 2 times if it fails
   eh3d-launcher new-project FILE.eh3dlist NAME     write an empty project list
   eh3d-launcher add-layer FILE.eh3dlist LAYER      add a file under the folder of the project (kind and SHA-256 are recorded)
   eh3d-launcher verify FILE.eh3dlist               check that the files of the project are there and unchanged
   eh3d-launcher recent [add FILE]                  show the recent projects, or put one at the head
 
-The workspace is the folder that holds the repositories of the suite: --workspace, or the variable EH3D_WORKSPACE, or '..'.
+For list, the workspace is the folder that holds the repositories of the suite: --workspace, or the variable EH3D_WORKSPACE, or '..'.
+launch starts only the known programs of the suite, from the folder named by the line 'workspace = FULL_PATH' of launcher.cfg in the folder below.
 The list of recent projects is kept in the folder of the variable EH3D_LAUNCHER_DIR (default: the application data folder).";
 
 fn workspace(args: &mut Vec<String>) -> PathBuf {
@@ -88,7 +91,17 @@ fn run(mut args: Vec<String>) -> Result<(), String> {
             Ok(())
         }
         "launch" => {
-            let ws = workspace(&mut args);
+            // what is started comes from the folder of the configuration file only: not from the current directory, the command line or the environment
+            let lang = language();
+            let config = data_dir();
+            let ws = configured_workspace(&config, lang)?;
+            if args.iter().any(|a| a == "--workspace") {
+                return Err(message(
+                    Msg::NoWorkspace,
+                    lang,
+                    &config.join(CONFIG_FILE).display().to_string(),
+                ));
+            }
             let split = args.iter().position(|a| a == "--").unwrap_or(args.len());
             let rest: Vec<String> = args.split_off(split).into_iter().skip(1).collect();
             let name = args
@@ -103,6 +116,9 @@ fn run(mut args: Vec<String>) -> Result<(), String> {
                     module.name, module.role, module.deployment_target
                 ));
             }
+            if !is_known(module) || !is_inside(&module.path, &ws) {
+                return Err(message(Msg::UnknownProgram, lang, &module.name));
+            }
             let bin = find_binary(module).ok_or_else(|| {
                 format!(
                     "{}: it has not been built; run build.bat or build.sh in {}",
@@ -110,6 +126,9 @@ fn run(mut args: Vec<String>) -> Result<(), String> {
                     module.path.display()
                 )
             })?;
+            if !is_inside(&bin, &module.path.join("target")) {
+                return Err(message(Msg::UnknownProgram, lang, &module.name));
+            }
             let out = supervise(&bin, &rest, Policy::default())?;
             if out.gave_up {
                 return Err(format!(
@@ -172,11 +191,23 @@ fn run(mut args: Vec<String>) -> Result<(), String> {
             let p = Project::load(Path::new(file))?;
             let problems = p.verify(root);
             if problems.is_empty() {
-                println!(
-                    "{}: {} files, all there and unchanged",
-                    p.name,
-                    p.layers.len()
-                );
+                let unchecked = p.unchecked();
+                if unchecked.is_empty() {
+                    println!(
+                        "{}: {} files, all there and unchanged",
+                        p.name,
+                        p.layers.len()
+                    );
+                } else {
+                    // a layer with no checksum cannot be said to be unchanged
+                    println!(
+                        "{}: {} files, all there; {} without a checksum, not verified: {}",
+                        p.name,
+                        p.layers.len(),
+                        unchecked.len(),
+                        unchecked.join(", ")
+                    );
+                }
                 Ok(())
             } else {
                 Err(problems.join("\n"))

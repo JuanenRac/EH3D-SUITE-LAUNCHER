@@ -121,7 +121,7 @@ EH3D-SUITE-LAUNCHER/
 
 ## ⚙️ Configuration
 
-Il n'y a pas encore de fichier de configuration : ce que la personne choisit est donné en arguments de la ligne de commande (voir Interfaces) et chaque valeur par défaut est écrite dans l'aide de la commande (`eh3d-launcher help`). Les limites fixes sont des constantes nommées dans le code, couvertes par des tests.
+Le seul fichier de configuration est `launcher.cfg` dans le dossier du lanceur, lu par `launch` seul : sa ligne `workspace = CHEMIN_COMPLET` est le dossier d'où les programmes sont lancés (seuls les programmes connus de la suite le sont). En dehors de cela, ce que la personne choisit est donné en arguments de la ligne de commande (voir Interfaces) et chaque valeur par défaut est écrite dans l'aide de la commande (`eh3d-launcher help`). Les limites fixes sont des constantes nommées dans le code, couvertes par des tests.
 
 ## 🚀 Démarrage rapide
 

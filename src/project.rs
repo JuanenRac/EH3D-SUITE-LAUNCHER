@@ -267,6 +267,15 @@ impl Project {
         Project::from_json(&text)
     }
 
+    /// The layers that have no checksum (a list of format 0, or an entry written without one): `verify` can only look for their files, not tell if they changed.
+    pub fn unchecked(&self) -> Vec<&str> {
+        self.layers
+            .iter()
+            .filter(|l| l.sha256.is_empty())
+            .map(|l| l.path.as_str())
+            .collect()
+    }
+
     /// Checks every layer against the disk: a missing file or a changed checksum is one message. A layer of format 0 has no checksum and is only looked for.
     pub fn verify(&self, root: &Path) -> Vec<String> {
         let mut problems = Vec::new();

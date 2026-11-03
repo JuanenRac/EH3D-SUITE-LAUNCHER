@@ -121,7 +121,7 @@ EH3D-SUITE-LAUNCHER/
 
 ## ⚙️ Configurazione
 
-Non c'è ancora un file di configurazione: ciò che la persona sceglie si passa come argomenti della riga di comando (vedi Interfacce) e ogni valore predefinito è scritto nella guida del comando (`eh3d-launcher help`). I limiti fissi sono costanti con nome nel codice, coperte da test.
+L'unico file di configurazione è `launcher.cfg` nella cartella del launcher, letto solo da `launch`: la sua riga `workspace = PERCORSO_COMPLETO` è la cartella da cui si avviano i programmi (solo quelli noti della suite). A parte questo, ciò che la persona sceglie si passa come argomenti della riga di comando (vedi Interfacce) e ogni valore predefinito è scritto nella guida del comando (`eh3d-launcher help`). I limiti fissi sono costanti con nome nel codice, coperte da test.
 
 ## 🚀 Avvio rapido
 

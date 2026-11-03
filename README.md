@@ -121,7 +121,7 @@ EH3D-SUITE-LAUNCHER/
 
 ## ⚙️ Configuration
 
-There is no configuration file yet: what a person chooses is given as arguments of the command line (see Interfaces) and every default is written in the help of the command (`eh3d-launcher help`). The fixed limits live in the code as named constants and are covered by tests.
+The only configuration file is `launcher.cfg` in the folder of the launcher, read by `launch` alone: its line `workspace = FULL_PATH` is the folder the programs are started from (only the known programs of the suite are started). Apart from it, what a person chooses is given as arguments of the command line (see Interfaces) and every default is written in the help of the command (`eh3d-launcher help`). The fixed limits live in the code as named constants and are covered by tests.
 
 ## 🚀 Quick start
 
