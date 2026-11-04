@@ -938,13 +938,23 @@ fn the_command_line_lists_only_desktop_programs_unless_asked_and_launch_explains
 fn the_recent_command_puts_a_file_at_the_head_once() {
     let data = temp("cli_recent");
     let envs = [("EH3D_LAUNCHER_DIR", data.as_path())];
-    for f in ["a.eh3dlist", "b.eh3dlist", "a.eh3dlist"] {
-        assert!(cli(&envs, &["recent", "add", f]).status.success());
+    // the list keeps the full path of a file that exists
+    let files = ["a.eh3dlist", "b.eh3dlist"].map(|name| {
+        let file = data.join(name);
+        fs::write(&file, "{}").unwrap();
+        file.to_string_lossy().into_owned()
+    });
+    for f in [&files[0], &files[1], &files[0]] {
+        assert!(cli(&envs, &["recent", "add", f.as_str()]).status.success());
     }
+    let full = |f: &String| eh3d_suite_launcher::recent::canonical(f).unwrap();
     assert_eq!(
         out(&cli(&envs, &["recent"])).lines().collect::<Vec<_>>(),
-        ["a.eh3dlist", "b.eh3dlist"]
+        [full(&files[0]), full(&files[1])]
     );
+    // a file that is not there is refused
+    let missing = data.join("missing.eh3dlist").to_string_lossy().into_owned();
+    assert!(!cli(&envs, &["recent", "add", &missing]).status.success());
 }
 
 #[test]
