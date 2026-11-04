@@ -79,6 +79,7 @@ Come si incastrano le parti di questo repository: chi lo usa, cosa contiene e da
 * **Test con input danneggiati:** i test forniscono anche file vuoti, spazzatura, numeri enormi e file tagliati, e nessuno può andare in panico.
 * **Nessuna ipotesi:** un valore privo di senso è un errore che dice quale e perché, mai un risultato che sembra solo giusto.
 * **Nessun codice unsafe:** `#![forbid(unsafe_code)]` nella libreria e nel programma.
+* **Elenchi e progetti più sicuri:** il percorso di un livello non può essere `.`, un nome che Windows rifiuta (`CON`, `AUX`, `COM1`...) né finire con un punto o uno spazio, due livelli che differiscono solo per le maiuscole sono uno solo, l'elenco dei recenti conserva il percorso completo di un file esistente e due esecuzioni contemporanee (`recent`, `add-layer`) non perdono la modifica dell'altra perché il file è bloccato mentre cambia; un livello viene calcolato a blocchi di 64 KiB e un programma terminato da un segnale viene indicato come tale e non come un errore.
 
 ## 🔒 Sicurezza e protezione
 

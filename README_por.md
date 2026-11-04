@@ -79,6 +79,7 @@ Como as partes deste repositório se encaixam: quem o usa, o que contém e de qu
 * **Testes com entradas danificadas:** os testes também dão ficheiros vazios, lixo, números enormes e ficheiros cortados, e nenhum pode entrar em pânico.
 * **Sem adivinhar:** um valor sem sentido é um erro que diz qual e porquê, nunca um resultado que apenas parece certo.
 * **Sem código unsafe:** `#![forbid(unsafe_code)]` na biblioteca e no programa.
+* **Listas e projetos mais seguros:** o caminho de uma camada não pode ser `.`, um nome que o Windows recusa (`CON`, `AUX`, `COM1`...) nem terminar em ponto ou espaço, duas camadas que só diferem nas maiúsculas são uma só, a lista de recentes guarda o caminho completo de um ficheiro que existe e duas execuções ao mesmo tempo (`recent`, `add-layer`) não perdem a alteração uma da outra porque o ficheiro fica bloqueado enquanto muda; uma camada é calculada em blocos de 64 KiB e um programa terminado por um sinal é dito como tal e não como uma falha.
 
 ## 🔒 Segurança e proteção
 

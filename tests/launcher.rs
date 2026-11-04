@@ -341,6 +341,24 @@ fn a_program_that_ended_with_an_error_of_use_is_not_started_again() {
     assert_eq!((out.runs, out.last_code, out.gave_up), (1, Some(1), true));
 }
 
+#[cfg(unix)]
+#[test]
+fn a_program_ended_by_a_signal_did_not_fail_and_is_not_started_again() {
+    let out = supervise(
+        Path::new("sh"),
+        &["-c".to_string(), "kill -9 $$".to_string()],
+        Policy {
+            max_restarts: 3,
+            backoff_ms: 1,
+        },
+    )
+    .unwrap();
+    assert_eq!(
+        (out.runs, out.last_code, out.gave_up, out.signalled),
+        (1, None, false, true)
+    );
+}
+
 #[test]
 fn an_old_project_file_is_still_read_and_an_archive_of_common_is_told_apart() {
     let dir = temp("oldproj");

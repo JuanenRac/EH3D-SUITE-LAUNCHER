@@ -31,6 +31,30 @@ pub fn remember(list: &mut Vec<String>, entry: &str) {
     list.truncate(MAX_RECENT);
 }
 
+/// The full path of an existing file, the way the list keeps it: a file that does not exist cannot be remembered, and the same file is never listed twice under two spellings
+/// (`./a.eh3dlist` and `a.eh3dlist`).
+pub fn canonical(file: &str) -> Result<String, String> {
+    let full = Path::new(file)
+        .canonicalize()
+        .map_err(|e| format!("{file}: {e}"))?;
+    let text = full.to_string_lossy().into_owned();
+    // Windows gives the long form `\\?\C:\...`
+    Ok(text.strip_prefix(r"\\?\").unwrap_or(&text).to_string())
+}
+
+/// Puts the file at the head of the list kept in `path` and returns the list. The reading, the change and the writing happen under a lock, so two runs at the same time
+/// do not lose each other's entry.
+pub fn add(path: &Path, file: &str) -> Result<Vec<String>, String> {
+    let entry = canonical(file)?;
+    crate::project::with_lock(path, || {
+        let mut list = load(path);
+        remember(&mut list, &entry);
+        save(path, &list)
+            .map(|()| list)
+            .map_err(|e| format!("{}: {e}", path.display()))
+    })?
+}
+
 /// Writes the list.
 pub fn save(path: &Path, list: &[String]) -> std::io::Result<()> {
     if let Some(parent) = path.parent() {

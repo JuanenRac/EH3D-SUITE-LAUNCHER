@@ -288,3 +288,105 @@ fn an_archive_of_the_common_container_is_told_apart_from_a_project_list_and_a_bi
         .contains("not text"));
     assert!(Project::load(&d.join("nothing.eh3dlist")).is_err());
 }
+
+#[test]
+fn a_layer_is_hashed_in_blocks_and_gives_the_same_digest_as_a_whole_read() {
+    use sha2::{Digest, Sha256};
+    let dir = temp("hash_blocks");
+    let file = dir.join("big.gtl");
+    // longer than one block of 64 KiB and not a multiple of it
+    let bytes: Vec<u8> = (0..200_000u32).map(|i| (i % 251) as u8).collect();
+    fs::write(&file, &bytes).unwrap();
+    let whole: String = Sha256::digest(&bytes)
+        .iter()
+        .map(|b| format!("{b:02x}"))
+        .collect();
+    assert_eq!(
+        eh3d_suite_launcher::project::sha256_hex(&file).unwrap(),
+        whole
+    );
+}
+
+#[test]
+fn names_a_system_cannot_have_are_not_layers_and_a_layer_is_not_listed_twice_in_two_cases() {
+    for bad in [
+        "CON",
+        "nul.txt",
+        "sub/aux.gtl",
+        "com1",
+        "LPT9.drl",
+        ".",
+        "a/./b",
+        "name.",
+        "name ",
+        "sub/x. ",
+    ] {
+        let json = format!(r#"{{"name":"p","layers":["{bad}"]}}"#);
+        assert!(Project::from_json(&json).is_err(), "{bad} was accepted");
+    }
+    for good in ["console.gtl", "com10.gtl", "board..v2.gtl", "a/b.gtl"] {
+        let json = format!(r#"{{"name":"p","layers":["{good}"]}}"#);
+        assert!(Project::from_json(&json).is_ok(), "{good} was refused");
+    }
+    let p = Project::from_json(
+        r#"{"name":"p","layers":["Top.GTL","sub/x.drl","top.gtl","SUB/X.DRL"]}"#,
+    )
+    .unwrap();
+    let paths: Vec<&str> = p.layers.iter().map(|l| l.path.as_str()).collect();
+    assert_eq!(paths, vec!["Top.GTL", "sub/x.drl"]);
+}
+
+#[test]
+fn the_recent_list_keeps_the_full_path_of_an_existing_file_and_refuses_one_that_is_not_there() {
+    let dir = temp("recent_canonical");
+    let list = dir.join("recent.txt");
+    let file = dir.join("a.eh3dlist");
+    fs::write(&file, "{}").unwrap();
+    let plain = file.to_string_lossy().into_owned();
+    let dotted = dir
+        .join(".")
+        .join("a.eh3dlist")
+        .to_string_lossy()
+        .into_owned();
+    eh3d_suite_launcher::recent::add(&list, &plain).unwrap();
+    let after = eh3d_suite_launcher::recent::add(&list, &dotted).unwrap();
+    assert_eq!(
+        after.len(),
+        1,
+        "the same file under two spellings: {after:?}"
+    );
+    assert!(Path::new(&after[0]).is_absolute());
+    let err =
+        eh3d_suite_launcher::recent::add(&list, &dir.join("missing.eh3dlist").to_string_lossy())
+            .unwrap_err();
+    assert!(err.contains("missing"), "{err}");
+    assert_eq!(load(&list).len(), 1);
+}
+
+#[test]
+fn runs_at_the_same_time_do_not_lose_an_entry_of_the_recent_list() {
+    let dir = temp("recent_lock");
+    let list = dir.join("recent.txt");
+    let mut files = Vec::new();
+    for i in 0..MAX_RECENT {
+        let f = dir.join(format!("p{i}.eh3dlist"));
+        fs::write(&f, "{}").unwrap();
+        files.push(f.to_string_lossy().into_owned());
+    }
+    let handles: Vec<_> = files
+        .iter()
+        .cloned()
+        .map(|f| {
+            let list = list.clone();
+            std::thread::spawn(move || eh3d_suite_launcher::recent::add(&list, &f).unwrap())
+        })
+        .collect();
+    for h in handles {
+        h.join().unwrap();
+    }
+    assert_eq!(load(&list).len(), MAX_RECENT, "an entry was lost");
+    assert!(
+        !dir.join("recent.txt.lock").exists(),
+        "the lock was left behind"
+    );
+}

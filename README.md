@@ -79,6 +79,7 @@ How the parts of this repository fit together: who uses it, what it holds and wh
 * **Tests with damaged input:** the tests also feed empty files, garbage, huge numbers and cut files, and none of them may panic.
 * **No guessing:** a value that does not make sense is an error that says which value and why, never a result that only looks right.
 * **No unsafe code:** `#![forbid(unsafe_code)]` in the library and the program.
+* **Safer lists and projects:** a layer path may not be `.`, a name that Windows refuses (`CON`, `AUX`, `COM1`...) or end in a dot or a space, two layers that differ only in case are one, the recent list keeps the full path of an existing file and two runs at the same time (`recent`, `add-layer`) do not lose each other's change because the file is locked while it is changed, a layer is hashed in blocks of 64 KiB, and a program ended by a signal is told as such and not as a failure.
 
 ## 🔒 Security & Safety
 

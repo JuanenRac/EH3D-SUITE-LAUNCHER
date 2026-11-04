@@ -4,6 +4,7 @@
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
 use std::fs;
+use std::io::Read;
 use std::path::Path;
 
 /// The version of the format this program writes; an older one is migrated when it is read, a newer one is refused.
@@ -112,18 +113,90 @@ pub fn sha256_hex(path: &Path) -> Result<String, String> {
             MAX_LAYER_BYTES
         ));
     }
-    let bytes = fs::read(path).map_err(|e| format!("{}: {e}", path.display()))?;
-    Ok(Sha256::digest(&bytes)
+    // read in blocks of 64 KiB: a layer of many megabytes is never held whole in memory
+    let mut file = fs::File::open(path).map_err(|e| format!("{}: {e}", path.display()))?;
+    let mut hasher = Sha256::new();
+    let mut block = vec![0u8; 64 * 1024];
+    loop {
+        let n = file
+            .read(&mut block)
+            .map_err(|e| format!("{}: {e}", path.display()))?;
+        if n == 0 {
+            break;
+        }
+        hasher.update(&block[..n]);
+    }
+    Ok(hasher
+        .finalize()
         .iter()
         .map(|b| format!("{b:02x}"))
         .collect())
+}
+
+/// Runs `work` while this program holds the lock `file.lock` (a file made with `create_new`, which only one process can do), so that two runs that read a file, change it and write it
+/// back do not lose each other's changes. It waits up to five seconds; a lock older than ten seconds belongs to a run that died and is taken over.
+pub fn with_lock<T>(file: &Path, work: impl FnOnce() -> T) -> Result<T, String> {
+    let mut name = file.as_os_str().to_owned();
+    name.push(".lock");
+    let lock = std::path::PathBuf::from(name);
+    let mut tries = 0;
+    loop {
+        match fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(&lock)
+        {
+            Ok(_) => break,
+            Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => {
+                let stale = fs::metadata(&lock)
+                    .and_then(|m| m.modified())
+                    .ok()
+                    .and_then(|t| t.elapsed().ok())
+                    .is_some_and(|age| age.as_secs() > 10);
+                if stale {
+                    let _ = fs::remove_file(&lock);
+                    continue;
+                }
+                tries += 1;
+                if tries > 250 {
+                    return Err(format!("{}: another run holds the lock", lock.display()));
+                }
+                std::thread::sleep(std::time::Duration::from_millis(20));
+            }
+            Err(e) => return Err(format!("{}: {e}", lock.display())),
+        }
+    }
+    let result = work();
+    let _ = fs::remove_file(&lock);
+    Ok(result)
 }
 
 /// A layer path as the project writes it: relative, with `/`, no empty part, no `..` part (a file name that merely contains two dots is fine), no drive or stream colon.
 fn is_inside_path(path: &str) -> bool {
     !path.contains(':')
         && !path.contains('\\')
-        && path.split('/').all(|part| !part.is_empty() && part != "..")
+        && path
+            .split('/')
+            .all(|part| !part.is_empty() && part != ".." && part != "." && usable_part(part))
+}
+
+/// Whether a part of a path is a name every system takes: Windows refuses `CON`, `PRN`, `AUX`, `NUL`, `COM1` to `COM9` and `LPT1` to `LPT9` (with any extension) and a name that ends
+/// in a dot or a space.
+fn usable_part(part: &str) -> bool {
+    if part.ends_with('.') || part.ends_with(' ') {
+        return false;
+    }
+    let stem = part
+        .split('.')
+        .next()
+        .unwrap_or("")
+        .trim_end()
+        .to_ascii_uppercase();
+    let reserved = matches!(stem.as_str(), "CON" | "PRN" | "AUX" | "NUL")
+        || (stem.len() == 4
+            && (stem.starts_with("COM") || stem.starts_with("LPT"))
+            && matches!(stem.as_bytes()[3], b'1'..=b'9'));
+    !reserved
 }
 
 fn check_name(name: &str) -> Result<(), String> {
@@ -253,6 +326,17 @@ impl Project {
                 });
             }
         }
+        // two layers whose paths differ only in case are one file on Windows and on macOS: the first is kept
+        let mut seen: Vec<String> = Vec::new();
+        layers.retain(|l: &Layer| {
+            let key = l.path.to_lowercase();
+            if seen.contains(&key) {
+                false
+            } else {
+                seen.push(key);
+                true
+            }
+        });
         let zero = v.get("zero");
         let num = |key: &str| {
             zero.and_then(|z| z.get(key))

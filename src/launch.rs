@@ -27,8 +27,10 @@ pub struct Outcome {
     pub runs: u32,
     /// The exit code of the last run; `None` when it was ended by a signal.
     pub last_code: Option<i32>,
-    /// True when the last run failed and the restarts were used up.
+    /// True when the last run failed and the restarts were used up. A program ended by a signal did not fail: the operator ended it.
     pub gave_up: bool,
+    /// True when the last run was ended by a signal (no exit code): it is neither a failure nor started again.
+    pub signalled: bool,
 }
 
 /// True when a run that ended with `code` is worth starting again: it crashed. A signal (`None`: the operator ended it), 1 and 2
@@ -53,6 +55,7 @@ pub fn supervise(program: &Path, args: &[String], policy: Policy) -> Result<Outc
                 runs,
                 last_code: code,
                 gave_up: false,
+                signalled: false,
             });
         }
         // a program that the operator ended on purpose (a signal) or that refused its arguments (1, 2) is not started again: only a crash is
@@ -60,7 +63,8 @@ pub fn supervise(program: &Path, args: &[String], policy: Policy) -> Result<Outc
             return Ok(Outcome {
                 runs,
                 last_code: code,
-                gave_up: true,
+                gave_up: code.is_some(),
+                signalled: code.is_none(),
             });
         }
         sleep(Duration::from_millis(wait));

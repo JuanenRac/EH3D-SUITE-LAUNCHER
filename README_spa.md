@@ -79,6 +79,7 @@ Cómo encajan las partes de este repositorio: quién lo usa, qué contiene y de 
 * **Pruebas con entradas dañadas:** las pruebas también dan ficheros vacíos, basura, números enormes y ficheros cortados, y ninguna puede provocar un pánico.
 * **Sin adivinar:** un valor que no tiene sentido es un error que dice cuál y por qué, nunca un resultado que solo lo parece.
 * **Sin código unsafe:** `#![forbid(unsafe_code)]` en la biblioteca y el programa.
+* **Listas y proyectos más seguros:** la ruta de una capa no puede ser `.`, un nombre que Windows rechaza (`CON`, `AUX`, `COM1`...) ni acabar en punto o espacio, dos capas que solo se diferencian en mayúsculas son una, la lista de recientes guarda la ruta completa de un fichero que existe y dos ejecuciones a la vez (`recent`, `add-layer`) no pierden el cambio de la otra porque el fichero se bloquea mientras se modifica, una capa se resume en bloques de 64 KiB y un programa terminado por una señal se dice así y no como un fallo.
 
 ## 🔒 Seguridad y protección
 

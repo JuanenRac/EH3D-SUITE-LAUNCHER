@@ -79,6 +79,7 @@ Comment les parties de ce dépôt s'articulent : qui l'utilise, ce qu'il contien
 * **Tests avec entrées abîmées :** les tests fournissent aussi des fichiers vides, du bruit, des nombres énormes et des fichiers coupés, et aucun ne doit paniquer.
 * **Sans deviner :** une valeur absurde est une erreur qui dit laquelle et pourquoi, jamais un résultat qui n'en a que l'air.
 * **Pas de code unsafe :** `#![forbid(unsafe_code)]` dans la bibliothèque et le programme.
+* **Des listes et des projets plus sûrs :** le chemin d'une couche ne peut pas être `.`, un nom que Windows refuse (`CON`, `AUX`, `COM1`...) ni finir par un point ou une espace, deux couches qui ne diffèrent que par la casse n'en font qu'une, la liste des récents garde le chemin complet d'un fichier existant et deux exécutions simultanées (`recent`, `add-layer`) ne perdent pas la modification de l'autre car le fichier est verrouillé pendant qu'il change ; une couche est hachée par blocs de 64 Kio, et un programme arrêté par un signal est signalé comme tel et non comme un échec.
 
 ## 🔒 Sécurité et protection
 

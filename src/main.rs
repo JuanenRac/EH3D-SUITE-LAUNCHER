@@ -132,6 +132,11 @@ fn run(mut args: Vec<String>) -> Result<(), String> {
                 return Err(message(Msg::UnknownProgram, lang, &module.name));
             }
             let out = supervise(&bin, &rest, Policy::default())?;
+            if out.signalled {
+                // the operator (or the system) ended it: that is not a failure and it is not started again
+                eprintln!("{}: it was ended by a signal", module.name);
+                return Ok(());
+            }
             if out.gave_up {
                 return Err(format!(
                     "{}: it failed {} times in a row (last code {:?})",
@@ -157,9 +162,7 @@ fn run(mut args: Vec<String>) -> Result<(), String> {
                 return Err(format!("{file}: already exists; nothing was overwritten"));
             }
             Project::new(name)?.save(Path::new(file))?;
-            let mut list = recent::load(&data_dir().join("recent.txt"));
-            recent::remember(&mut list, file);
-            recent::save(&data_dir().join("recent.txt"), &list).map_err(|e| e.to_string())?;
+            recent::add(&data_dir().join("recent.txt"), file)?;
             println!("written {file}");
             Ok(())
         }
@@ -175,13 +178,17 @@ fn run(mut args: Vec<String>) -> Result<(), String> {
             let root = root
                 .canonicalize()
                 .map_err(|e| format!("{}: {e}", root.display()))?;
-            let mut p = Project::load(Path::new(file))?;
             let layer_abs = Path::new(layer)
                 .canonicalize()
                 .map_err(|e| format!("{layer}: {e}"))?;
-            p.add_layer(&root, &layer_abs)?;
-            p.save(Path::new(file))?;
-            println!("added {layer} ({} files in the project)", p.layers.len());
+            // reading, adding and writing happen under a lock: two runs at the same time do not lose a layer
+            let count = eh3d_suite_launcher::project::with_lock(Path::new(file), || {
+                let mut p = Project::load(Path::new(file))?;
+                p.add_layer(&root, &layer_abs)?;
+                p.save(Path::new(file))?;
+                Ok::<usize, String>(p.layers.len())
+            })??;
+            println!("added {layer} ({count} files in the project)");
             Ok(())
         }
         "verify" => {
@@ -217,12 +224,12 @@ fn run(mut args: Vec<String>) -> Result<(), String> {
         }
         "recent" => {
             let path = data_dir().join("recent.txt");
-            let mut list = recent::load(&path);
-            if args.first().map(String::as_str) == Some("add") {
+            let list = if args.first().map(String::as_str) == Some("add") {
                 let file = args.get(1).ok_or("recent add needs a file")?;
-                recent::remember(&mut list, file);
-                recent::save(&path, &list).map_err(|e| e.to_string())?;
-            }
+                recent::add(&path, file)?
+            } else {
+                recent::load(&path)
+            };
             for e in &list {
                 println!("{e}");
             }

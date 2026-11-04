@@ -79,6 +79,7 @@ Wie die Teile dieses Repositorys zusammenpassen: wer es nutzt, was es enthält u
 * **Tests mit beschädigten Eingaben:** Die Tests füttern auch leere Dateien, Datenmüll, riesige Zahlen und abgeschnittene Dateien; keiner darf in Panik geraten.
 * **Kein Raten:** Ein unsinniger Wert ist ein Fehler, der sagt welcher und warum, nie ein Ergebnis, das nur richtig aussieht.
 * **Kein unsafe-Code:** `#![forbid(unsafe_code)]` in Bibliothek und Programm.
+* **Sicherere Listen und Projekte:** ein Ebenenpfad darf nicht `.` sein, kein von Windows abgelehnter Name (`CON`, `AUX`, `COM1` ...) und nicht auf Punkt oder Leerzeichen enden, zwei Ebenen, die sich nur in der Groß-/Kleinschreibung unterscheiden, sind eine, die Liste der zuletzt verwendeten Projekte behält den vollständigen Pfad einer vorhandenen Datei, und zwei gleichzeitige Läufe (`recent`, `add-layer`) verlieren die Änderung des anderen nicht, weil die Datei während der Änderung gesperrt ist; eine Ebene wird in Blöcken zu 64 KiB gehasht, und ein durch ein Signal beendetes Programm wird als solches gemeldet und nicht als Fehler.
 
 ## 🔒 Sicherheit und Schutz
 

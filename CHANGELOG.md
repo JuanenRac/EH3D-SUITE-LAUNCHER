@@ -3,6 +3,12 @@
 All notable changes to this project are documented here.
 
 ## [Unreleased]
+- **A layer path is checked harder:** `.`, a name that Windows refuses (`CON`, `AUX`, `COM1`...) and a part that ends in a dot or a space are refused, and two layers that differ only in case are one.
+- **The recent list keeps full paths and `recent add` needs the file to exist:** the same file is not listed twice under two spellings.
+- **Two runs at the same time do not lose a change:** `recent` and `add-layer` hold a lock file while they read, change and write.
+- **A layer is hashed in blocks of 64 KiB** instead of being read whole.
+- **A program ended by a signal is not a failure:** `launch` says it was ended by a signal and does not report that it failed.
+- **The commands of the README are run by a test.**
 
 ## [0.0.4] - Audit fixes, the new reading limits, tests and the application icon
 
