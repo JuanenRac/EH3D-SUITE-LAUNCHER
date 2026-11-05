@@ -3,11 +3,12 @@
 #![forbid(unsafe_code)]
 
 use eh3d_suite_launcher::launch::{
-    configured_workspace, is_inside, language, message, supervise, Msg, Policy, CONFIG_FILE,
+    configured_workspace, data_dir, language, message, resolve, supervise, Msg, CONFIG_FILE,
 };
 use eh3d_suite_launcher::project::Project;
 use eh3d_suite_launcher::recent;
-use eh3d_suite_launcher::registry::{discover, find_binary, is_known, Module};
+use eh3d_suite_launcher::registry::{discover, find_binary, find_module};
+use eh3d_suite_launcher::settings::Settings;
 use std::env;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
@@ -36,26 +37,6 @@ fn workspace(args: &mut Vec<String>) -> PathBuf {
     env::var_os("EH3D_WORKSPACE")
         .map(PathBuf::from)
         .unwrap_or_else(|| PathBuf::from(".."))
-}
-
-fn data_dir() -> PathBuf {
-    if let Some(d) = env::var_os("EH3D_LAUNCHER_DIR") {
-        return PathBuf::from(d);
-    }
-    if let Some(d) = env::var_os("APPDATA") {
-        return PathBuf::from(d).join("eh3d-launcher");
-    }
-    if let Some(d) = env::var_os("HOME") {
-        return PathBuf::from(d).join(".config").join("eh3d-launcher");
-    }
-    PathBuf::from(".")
-}
-
-fn find<'a>(modules: &'a [Module], name: &str) -> Option<&'a Module> {
-    let n = name.to_ascii_lowercase();
-    modules
-        .iter()
-        .find(|m| m.name.to_ascii_lowercase() == n || m.program() == n)
 }
 
 fn run(mut args: Vec<String>) -> Result<(), String> {
@@ -110,28 +91,10 @@ fn run(mut args: Vec<String>) -> Result<(), String> {
                 .first()
                 .ok_or("launch needs the name of a program (see list)")?;
             let (modules, _) = discover(&ws);
-            let module = find(&modules, name)
+            let module = find_module(&modules, name)
                 .ok_or_else(|| format!("{name}: no such program in {}", ws.display()))?;
-            if !module.is_desktop() {
-                return Err(format!(
-                    "{}: it is a {} for '{}', not a program for this computer",
-                    module.name, module.role, module.deployment_target
-                ));
-            }
-            if !is_known(module) || !is_inside(&module.path, &ws) {
-                return Err(message(Msg::UnknownProgram, lang, &module.name));
-            }
-            let bin = find_binary(module).ok_or_else(|| {
-                format!(
-                    "{}: it has not been built; run build.bat or build.sh in {}",
-                    module.name,
-                    module.path.display()
-                )
-            })?;
-            if !is_inside(&bin, &module.path.join("target")) {
-                return Err(message(Msg::UnknownProgram, lang, &module.name));
-            }
-            let out = supervise(&bin, &rest, Policy::default())?;
+            let bin = resolve(module, &ws, lang)?;
+            let out = supervise(&bin, &rest, Settings::load(&config)?.policy())?;
             if out.signalled {
                 // the operator (or the system) ended it: that is not a failure and it is not started again
                 eprintln!("{}: it was ended by a signal", module.name);
@@ -150,18 +113,7 @@ fn run(mut args: Vec<String>) -> Result<(), String> {
                 args.first().ok_or("new-project needs a file")?,
                 args.get(1).ok_or("new-project needs a name")?,
             );
-            if Path::new(file).extension().and_then(|e| e.to_str())
-                != Some(eh3d_suite_launcher::project::EXTENSION)
-            {
-                return Err(format!(
-                    "{file}: a project list ends in .{} (.eh3dproj is the archive of EH3D-COMMON)",
-                    eh3d_suite_launcher::project::EXTENSION
-                ));
-            }
-            if Path::new(file).exists() {
-                return Err(format!("{file}: already exists; nothing was overwritten"));
-            }
-            Project::new(name)?.save(Path::new(file))?;
+            eh3d_suite_launcher::project::create_file(file, name)?;
             recent::add(&data_dir().join("recent.txt"), file)?;
             println!("written {file}");
             Ok(())
@@ -171,23 +123,8 @@ fn run(mut args: Vec<String>) -> Result<(), String> {
                 args.first().ok_or("add-layer needs a project file")?,
                 args.get(1).ok_or("add-layer needs a layer file")?,
             );
-            let root = Path::new(file)
-                .parent()
-                .filter(|p| !p.as_os_str().is_empty())
-                .unwrap_or(Path::new("."));
-            let root = root
-                .canonicalize()
-                .map_err(|e| format!("{}: {e}", root.display()))?;
-            let layer_abs = Path::new(layer)
-                .canonicalize()
-                .map_err(|e| format!("{layer}: {e}"))?;
-            // reading, adding and writing happen under a lock: two runs at the same time do not lose a layer
-            let count = eh3d_suite_launcher::project::with_lock(Path::new(file), || {
-                let mut p = Project::load(Path::new(file))?;
-                p.add_layer(&root, &layer_abs)?;
-                p.save(Path::new(file))?;
-                Ok::<usize, String>(p.layers.len())
-            })??;
+            let count =
+                eh3d_suite_launcher::project::add_layer_to_file(Path::new(file), Path::new(layer))?;
             println!("added {layer} ({count} files in the project)");
             Ok(())
         }

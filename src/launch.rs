@@ -1,5 +1,6 @@
 //! Starting a program of the suite and keeping it alive: a program that dies with an error is started again a limited number of times, one that ends well is left alone.
 
+use crate::registry::{find_binary, is_known, Module};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::thread::sleep;
@@ -157,4 +158,43 @@ pub fn is_inside(file: &Path, folder: &Path) -> bool {
         (Ok(f), Ok(d)) => f.starts_with(d),
         _ => false,
     }
+}
+
+/// The folder where the launcher keeps its files (`launcher.cfg`, `recent.txt`): the variable `EH3D_LAUNCHER_DIR`, or the application data folder.
+pub fn data_dir() -> PathBuf {
+    if let Some(d) = std::env::var_os("EH3D_LAUNCHER_DIR") {
+        return PathBuf::from(d);
+    }
+    if let Some(d) = std::env::var_os("APPDATA") {
+        return PathBuf::from(d).join("eh3d-launcher");
+    }
+    if let Some(d) = std::env::var_os("HOME") {
+        return PathBuf::from(d).join(".config").join("eh3d-launcher");
+    }
+    PathBuf::from(".")
+}
+
+/// The built program of `module`, once every check that `launch` makes has passed: it is a program for this computer, it is on the list of the suite and inside `workspace`, and
+/// the file found is inside its own `target` folder.
+pub fn resolve(module: &Module, workspace: &Path, lang: &str) -> Result<PathBuf, String> {
+    if !module.is_desktop() {
+        return Err(format!(
+            "{}: it is a {} for '{}', not a program for this computer",
+            module.name, module.role, module.deployment_target
+        ));
+    }
+    if !is_known(module) || !is_inside(&module.path, workspace) {
+        return Err(message(Msg::UnknownProgram, lang, &module.name));
+    }
+    let bin = find_binary(module).ok_or_else(|| {
+        format!(
+            "{}: it has not been built; run build.bat or build.sh in {}",
+            module.name,
+            module.path.display()
+        )
+    })?;
+    if !is_inside(&bin, &module.path.join("target")) {
+        return Err(message(Msg::UnknownProgram, lang, &module.name));
+    }
+    Ok(bin)
 }

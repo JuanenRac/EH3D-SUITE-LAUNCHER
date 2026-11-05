@@ -258,6 +258,16 @@ impl Project {
         Ok(())
     }
 
+    /// Takes a file out of the list (the file itself is not touched); one that is not in the list is an error.
+    pub fn remove_layer(&mut self, path: &str) -> Result<(), String> {
+        let before = self.layers.len();
+        self.layers.retain(|l| l.path != path);
+        if self.layers.len() == before {
+            return Err(format!("{path}: not in the project"));
+        }
+        Ok(())
+    }
+
     pub fn to_json(&self) -> String {
         let layers: Vec<Value> = self
             .layers
@@ -396,4 +406,48 @@ impl Project {
         }
         problems
     }
+}
+
+/// Writes an empty project list `file` called `name`. The file must end in `.eh3dlist` and must not exist: nothing is overwritten.
+pub fn create_file(file: &str, name: &str) -> Result<(), String> {
+    if Path::new(file).extension().and_then(|e| e.to_str()) != Some(EXTENSION) {
+        return Err(format!(
+            "{file}: a project list ends in .{EXTENSION} (.eh3dproj is the archive of EH3D-COMMON)"
+        ));
+    }
+    if Path::new(file).exists() {
+        return Err(format!("{file}: already exists; nothing was overwritten"));
+    }
+    Project::new(name)?.save(Path::new(file))
+}
+
+/// Adds `layer` to the project list `file` (kind and SHA-256 are recorded) and says how many files the project has now. The file must lie under the folder of the project.
+/// Reading, adding and writing happen under a lock: two runs at the same time do not lose a layer.
+pub fn add_layer_to_file(file: &Path, layer: &Path) -> Result<usize, String> {
+    let root = file
+        .parent()
+        .filter(|p| !p.as_os_str().is_empty())
+        .unwrap_or(Path::new("."));
+    let root = root
+        .canonicalize()
+        .map_err(|e| format!("{}: {e}", root.display()))?;
+    let layer_abs = layer
+        .canonicalize()
+        .map_err(|e| format!("{}: {e}", layer.display()))?;
+    with_lock(file, || {
+        let mut p = Project::load(file)?;
+        p.add_layer(&root, &layer_abs)?;
+        p.save(file)?;
+        Ok::<usize, String>(p.layers.len())
+    })?
+}
+
+/// Takes the layer `layer` (as the project writes it) out of the project list `file` and says how many files are left; under the same lock as `add_layer_to_file`.
+pub fn remove_layer_from_file(file: &Path, layer: &str) -> Result<usize, String> {
+    with_lock(file, || {
+        let mut p = Project::load(file)?;
+        p.remove_layer(layer)?;
+        p.save(file)?;
+        Ok::<usize, String>(p.layers.len())
+    })?
 }

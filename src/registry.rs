@@ -185,6 +185,14 @@ pub fn binary_names(module: &Module) -> Vec<String> {
     names
 }
 
+/// The module that a name stands for: the name of its repository or the name of its program, without regard to case.
+pub fn find_module<'a>(modules: &'a [Module], name: &str) -> Option<&'a Module> {
+    let n = name.to_ascii_lowercase();
+    modules
+        .iter()
+        .find(|m| m.name.to_ascii_lowercase() == n || m.program() == n)
+}
+
 /// Where the built program of a module is: `target/release` first, then `target/debug`; `None` when it has not been built.
 pub fn find_binary(module: &Module) -> Option<PathBuf> {
     let suffix = if cfg!(windows) { ".exe" } else { "" };
