@@ -3,6 +3,7 @@
 All notable changes to this project are documented here.
 
 ## [Unreleased]
+- **The validation job is the shared one of the documentation hub:** the checks of the manifest, the documents and the pictures run through the reusable workflow, fixed to a full commit of EH3D-DOCS whose actions are pinned by commit.
 - **A layer path is checked harder:** `.`, a name that Windows refuses (`CON`, `AUX`, `COM1`...) and a part that ends in a dot or a space are refused, and two layers that differ only in case are one.
 - **The recent list keeps full paths and `recent add` needs the file to exist:** the same file is not listed twice under two spellings.
 - **Two runs at the same time do not lose a change:** `recent` and `add-layer` hold a lock file while they read, change and write.
