@@ -3,6 +3,9 @@
 All notable changes to this project are documented here.
 
 ## [Unreleased]
+
+## [0.0.5] - The window with recent projects, layers and the launcher of the suite programs
+
 - **A window:** built with the `gui` feature (egui, the look the other programs of the suite share), program `eh3d-launcher-gui`, which opens without a console on Windows. It lists the recent projects, opens or creates a project, adds and removes its files with the same checks as the command line, verifies the files, lists the programs of the suite and starts each one (with the file of the project as its argument when the person wants), in the eight languages. A program runs on its own thread, so the window keeps answering, and every error is the message of the library.
 - **Settings in `launcher.cfg`:** `language`, `max_restarts`, `backoff_ms`, `window_width` and `window_height` (limits checked, a bad line is an error that names it); `launcher.cfg.example` lists every key with its default. The command line reads the restart settings too.
 - **One implementation for the command line and the window:** creating a project, adding and removing a file, finding a program by name and the checks before a program is started are functions of the library that both use; the state and the actions of the window live in a module with tests and the screen only draws them.
