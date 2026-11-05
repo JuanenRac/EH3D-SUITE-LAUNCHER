@@ -4,6 +4,8 @@
 //! Finds the programs of the suite by their manifests, starts them, keeps the list of recent projects and reads and writes the project file. With the `gui` feature it also has the window (`window` holds its state, `gui` draws it).
 
 pub mod browse;
+#[cfg(feature = "gui")]
+pub mod gui;
 pub mod lang;
 pub mod launch;
 pub mod project;

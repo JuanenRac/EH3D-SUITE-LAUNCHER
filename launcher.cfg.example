@@ -1,0 +1,19 @@
+# launcher.cfg: the settings of EH3D-SUITE-LAUNCHER. Copy this file as launcher.cfg into the folder of the launcher
+# (the variable EH3D_LAUNCHER_DIR, or %APPDATA%\eh3d-launcher on Windows, or ~/.config/eh3d-launcher elsewhere).
+# One "key = value" per line; a line that starts with # is a comment; a value that makes no sense is an error that names its line.
+
+# The folder that holds the repositories (or the installed programs) of the suite. A full path is required.
+# Without it nothing is started: neither the command line nor the window.
+workspace = C:\EH3D
+
+# The language of the window: auto (follow the system), en, es, de, fr, it, ja, zh or pt.
+language = auto
+
+# How many times a program that crashed is started again (0 to 10), and the first waiting time in milliseconds (0 to 30000; it doubles each time).
+# A program the operator ended, or that refused its arguments (exit code 1 or 2), is never started again.
+max_restarts = 2
+backoff_ms = 500
+
+# The size of the window when it opens, in pixels (640 to 7680 wide, 420 to 4320 high).
+window_width = 1100
+window_height = 700
