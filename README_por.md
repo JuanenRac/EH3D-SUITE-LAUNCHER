@@ -18,7 +18,7 @@
 
 ---
 
-**Verificação de honestidade - o que funciona hoje:** uma biblioteca Rust e um programa de linha de comandos (`eh3d-launcher`) com 73 testes que correm num computador: encontra os programas da suíte pelos seus manifestos, arranca-os e volta a arrancá-los se falharem, guarda os projetos recentes e escreve e verifica o ficheiro de projeto com o SHA-256 de cada ficheiro. Ainda não tem janela, não foi experimentado numa máquina e não foi verificado com uma coleção de ficheiros reais.
+**Verificação de honestidade - o que funciona hoje:** uma biblioteca Rust e um programa de linha de comandos (`eh3d-launcher`) com 100 testes que correm num computador: encontra os programas da suíte pelos seus manifestos, arranca-os e volta a arrancá-los se falharem, guarda os projetos recentes e escreve e verifica o ficheiro de projeto com o SHA-256 de cada ficheiro. Uma janela (`eh3d-launcher-gui`, compilada com a funcionalidade `gui`) está escrita e a sua lógica está testada, mas não foi compilada nem vista num ecrã; nada foi experimentado numa máquina e nada foi verificado com uma coleção de ficheiros reais.
 
 ---
 
@@ -31,7 +31,7 @@
 |---|---|
 | Versão | `0.0.4` |
 | Maturidade | Estrutura inicial |
-| Testes | 73 |
+| Testes | 100 |
 | Tecnologias | Rust |
 | Em hardware real | Não experimentado: nada disto correu numa máquina |
 
@@ -47,9 +47,9 @@ Cada linha é uma parte deste repositório e a luz diz até onde chega hoje. É 
 |---|---|---|
 | Núcleo | 🟡 | encontra os programas da suíte pelos seus manifestos, arranca-os e volta a arrancá-los se falharem, guarda os projetos recentes e escreve e verifica o ficheiro de projeto com o SHA-256 de cada ficheiro; testado num computador com entradas normais e danificadas, não com uma coleção de ficheiros reais. |
 | Linha de comandos | 🟡 | `eh3d-launcher` executa as mesmas funções da biblioteca e imprime o resultado; cada erro volta como mensagem e código de saída diferente de zero. |
-| Testes | 🟡 | 73 testes passam (`cargo test`), com casos normais, casos-limite e entradas danificadas. |
+| Testes | 🟡 | 100 testes passam (`cargo test`), com casos normais, casos-limite e entradas danificadas. |
 | Segurança | 🟡 | Rust seguro e simples (`forbid(unsafe_code)`): nada entra em pânico com os ficheiros recebidos e um valor mau é um erro com o seu motivo; sem revisão independente. |
-| Janela | 🔴 | Previsto: a janela egui comum à suíte; hoje existe apenas a linha de comandos. |
+| Janela | 🟠 | Escrita (egui, `--features gui`, programa `eh3d-launcher-gui`): os projetos recentes, abrir ou criar um projeto, adicionar e remover os seus ficheiros com as verificações da linha de comandos e os programas da suíte com um botão para iniciar cada um; a sua lógica está testada, mas ainda não foi compilada nem vista num ecrã. |
 | Hardware real | 🔴 | Não experimentado: nada disto foi executado numa máquina. |
 | Documentação | 🟡 | README em oito idiomas, o registo de alterações e as duas imagens desenhadas a partir de `docs/`. |
 
@@ -59,10 +59,11 @@ Cada linha é uma parte deste repositório e a luz diz até onde chega hoje. É 
 * **O lançador** (`src/launch.rs`): arranca um programa da suíte e, se terminar com erro, volta a arrancá-lo até duas vezes com uma espera que duplica; um programa que termina bem é deixado em paz.
 * **O ficheiro de projeto** (`src/project.rs`, `.eh3dlist`): o nome, os ficheiros do trabalho com o seu tipo e SHA-256 e o zero de trabalho; ao ler recusa caminhos que saem do projeto e migra o primeiro formato. **Projetos recentes** (`src/recent.rs`) guarda os dez últimos.
 * **Procura e reinício:** o binário de um programa encontra-se pelo nome `[[bin]]` do seu `Cargo.toml` (`eh3d-camdebug`, `eh3d-pnp`...), e um programa que o operador terminou de propósito (um sinal) ou que recusou os seus argumentos (código de saída 1 ou 2) não é reiniciado: só uma falha grave é.
+* **A janela** (`src/window.rs`, `src/gui.rs`; `--features gui`, programa `eh3d-launcher-gui`): os projetos recentes, abrir ou criar um projeto, adicionar e remover os seus ficheiros com as mesmas verificações de `add-layer` e os programas da suíte com um botão que inicia cada um com o projeto. O estado, as ações, as definições e as palavras são código simples com testes; o desenho é fino. Escrita, ainda não vista num ecrã.
 
 ## 🧩 Papel no EH3D
 
-EH3D-SUITE-LAUNCHER é um programa da EH3D Fabrication Suite. Hoje funciona como biblioteca e linha de comandos; a sua janela, com o aspeto que os outros programas da suíte partilham, está prevista. Lê e escreve ficheiros simples, por isso pode ser usado sozinho ou entre os outros programas.
+EH3D-SUITE-LAUNCHER é um programa da EH3D Fabrication Suite. Funciona como biblioteca, como linha de comandos e, compilado com a funcionalidade `gui`, como janela (`eh3d-launcher-gui`) com o aspeto que os outros programas da suíte partilham. Lê e escreve ficheiros simples, por isso pode ser usado sozinho ou entre os outros programas.
 
 ## 🏛️ Arquitetura
 
@@ -98,12 +99,18 @@ A biblioteca é `eh3d_suite_launcher` (`use eh3d_suite_launcher::...`); a linha 
 ```text
 EH3D-SUITE-LAUNCHER/
 ├── src/
+│   ├── browse.rs                                a lista de ficheiros da janela que abre um ficheiro
+│   ├── gui.rs                                   a janela (egui, com a funcionalidade gui): desenha o estado e transmite o que a pessoa faz
+│   ├── gui_main.rs                              a janela como programa à parte, sem consola no Windows
+│   ├── lang.rs                                  as palavras da janela nos oito idiomas
 │   ├── launch.rs                                uma parte da lógica
 │   ├── lib.rs                                   a biblioteca: o que cada comando usa
 │   ├── main.rs                                  a linha de comandos
 │   ├── project.rs                               uma parte da lógica
 │   ├── recent.rs                                uma parte da lógica
-│   └── registry.rs                              uma parte da lógica
+│   ├── registry.rs                              uma parte da lógica
+│   ├── settings.rs                              as definições de launcher.cfg: idioma, reinícios e tamanho da janela
+│   └── window.rs                                o estado da janela sem ecrã: programas, projetos, ficheiros e arranque
 ├── tests/
 │   └── launcher.rs                              testes da biblioteca e da linha de comandos
 ├── docs/
@@ -117,30 +124,38 @@ EH3D-SUITE-LAUNCHER/
 ├── rust-toolchain.toml                          a toolchain de Rust fixada
 ├── CHANGELOG.md                                 o que mudou em cada versão
 ├── SECURITY.md SUPPORT.md                       como comunicar uma vulnerabilidade e onde perguntar
-└── CONTRIBUTING.md CODE_OF_CONDUCT.md LICENSE   como contribuir, o código de conduta e a licença
+├── CONTRIBUTING.md CODE_OF_CONDUCT.md LICENSE   como contribuir, o código de conduta e a licença
+└── launcher.cfg.example                         todas as definições de launcher.cfg com o valor predefinido
 ```
 
 ## ⚙️ Configuração
 
-O único ficheiro de configuração é `launcher.cfg`, na pasta do lançador, lido só por `launch`: a sua linha `workspace = CAMINHO_COMPLETO` é a pasta de onde se iniciam os programas (só os programas conhecidos da suite). Para além disso, o que a pessoa escolhe é dado como argumentos da linha de comandos (ver Interfaces) e cada valor por omissão está escrito na ajuda do comando (`eh3d-launcher help`). Os limites fixos são constantes com nome no código, cobertas por testes.
+O ficheiro de configuração é `launcher.cfg`, na pasta do lançador, lido por `launch` e pela janela: a sua linha `workspace = CAMINHO_COMPLETO` é a pasta de onde se iniciam os programas (só os programas conhecidos da suíte), e as linhas opcionais `language`, `max_restarts`, `backoff_ms`, `window_width` e `window_height` fixam o idioma da janela, quantas vezes se volta a iniciar um programa que falhou, o tempo de espera e o tamanho da janela. `launcher.cfg.example` lista cada chave com o valor por omissão e os limites. Para além disso, o que a pessoa escolhe é dado como argumentos da linha de comandos (ver Interfaces) e cada valor por omissão está escrito na ajuda do comando (`eh3d-launcher help`). Os limites de um valor são constantes com nome no código, cobertas por testes.
 
 ## 🚀 Início rápido
 
-Precisa de uma cadeia de ferramentas Rust estável (1.75 ou mais recente).
+Precisa de uma cadeia de ferramentas Rust estável (1.95 ou mais recente).
 
 ```bash
 cargo build --release
 cargo test
 cargo run --release -- list --workspace ..
+# a janela (precisa da funcionalidade gui)
+cargo build --release --features gui
+cargo run --release --features gui --bin eh3d-launcher-gui
 ```
 
 ## 🧪 Testes
 
-O conjunto tem 73 testes (`cargo test`, executados em Windows e Linux no CI). Verificam os casos normais, os casos-limite e as entradas danificadas: ficheiros vazios, lixo e ficheiros cortados nunca provocam pânico. O CI executa ainda `cargo fmt --check`, `cargo clippy` com avisos como erros e `python -I tools/ci_validate.py`.
+O conjunto tem 100 testes (`cargo test`, executados em Windows e Linux no CI). Verificam os casos normais, os casos-limite e as entradas danificadas: ficheiros vazios, lixo e ficheiros cortados nunca provocam pânico. O CI executa ainda `cargo fmt --check`, `cargo clippy` (também com `--features gui`) com avisos como erros e `python -I tools/ci_validate.py`.
 
 ## 🏗️ Compilação e publicação
 
 A versão está em `Cargo.toml` e em `eh3d.project.json`; cada versão tem a sua entrada em [CHANGELOG.md](CHANGELOG.md). `build.bat` / `build.sh` compilam o programa, `test.bat` / `test.sh` executam os testes e `run.bat` / `run.sh` executam-no com um exemplo. As versões são publicadas no GitHub.
+
+### Transferências
+
+Cada versão traz o programa de linha de comandos e a janela para Windows (64 e 32 bits), Linux (64 bits) e macOS (Apple silicon e Intel), como `<nome>-<versão>-<sistema>.zip` (Windows) ou `.tar.gz` com os dois programas, a licença, o readme, o ícone e `launcher.cfg.example`. Os ficheiros são construídos pelo GitHub Actions e listados em `SHA256SUMS`. Para verificar uma transferência, compare o seu hash com o ficheiro `.sha256` ao lado (`sha256sum -c`).
 
 ## 📂 Estrutura do repositório
 
@@ -153,11 +168,24 @@ A versão está em `Cargo.toml` e em `eh3d.project.json`; cada versão tem a sua
 
 ```text
 EH3D-SUITE-LAUNCHER/
-├── crates/
-│   ├── eh3d-parser-gerber/                      leitor Gerber RS-274X
-│   ├── eh3d-parser-excellon/                    leitor de ficheiros de furação Excellon
-│   └── eh3d-parser-gcode/                       leitor e intérprete modal de G-code
-├── docs/                                        READERS.md, o que cada leitor promete e o que não faz, e os dados das duas imagens
+├── src/
+│   ├── browse.rs                                a lista de ficheiros da janela que abre um ficheiro
+│   ├── gui.rs                                   a janela (egui, com a funcionalidade gui): desenha o estado e transmite o que a pessoa faz
+│   ├── gui_main.rs                              a janela como programa à parte, sem consola no Windows
+│   ├── lang.rs                                  as palavras da janela nos oito idiomas
+│   ├── launch.rs                                uma parte da lógica
+│   ├── lib.rs                                   a biblioteca: o que cada comando usa
+│   ├── main.rs                                  a linha de comandos
+│   ├── project.rs                               uma parte da lógica
+│   ├── recent.rs                                uma parte da lógica
+│   ├── registry.rs                              uma parte da lógica
+│   ├── settings.rs                              as definições de launcher.cfg: idioma, reinícios e tamanho da janela
+│   └── window.rs                                o estado da janela sem ecrã: programas, projetos, ficheiros e arranque
+├── tests/
+│   └── launcher.rs                              testes da biblioteca e da linha de comandos
+├── docs/
+│   ├── architecture.json                        dados da imagem de Arquitetura
+│   └── structure.json                           dados da imagem de Estrutura
 ├── tools/                                       verificação da CI e do README e ferramentas de imagens
 ├── images/                                      banner e as imagens de Arquitetura e Estrutura do repositório
 ├── .github/                                     fluxos de CI e de publicação, modelos de issues e pull requests
@@ -166,7 +194,8 @@ EH3D-SUITE-LAUNCHER/
 ├── rust-toolchain.toml                          a toolchain de Rust fixada
 ├── CHANGELOG.md                                 o que mudou em cada versão
 ├── SECURITY.md SUPPORT.md                       como comunicar uma vulnerabilidade e onde perguntar
-└── CONTRIBUTING.md CODE_OF_CONDUCT.md LICENSE   como contribuir, o código de conduta e a licença
+├── CONTRIBUTING.md CODE_OF_CONDUCT.md LICENSE   como contribuir, o código de conduta e a licença
+└── launcher.cfg.example                         todas as definições de launcher.cfg com o valor predefinido
 ```
 
 </details>
@@ -175,14 +204,14 @@ EH3D-SUITE-LAUNCHER/
 
 **Limites conhecidos hoje**
 
-* Ainda não tem janela: existem apenas a biblioteca e a linha de comandos.
+* A janela está escrita e a sua lógica está testada, mas ainda não foi compilada nem vista num ecrã.
 * Não foi experimentado numa máquina nem com uma coleção de ficheiros reais e não teve revisão independente.
 * Ainda não descobre máquinas na rede, não mantém a suíte atualizada (isso é o EH3D-UPDATER) e o `.eh3dlist` é um ficheiro JSON que aponta para os ficheiros, não um arquivo que os contém.
 
 **A seguir**
 
 * Descobrir as máquinas da oficina na rede e chamar o EH3D-UPDATER a partir da janela.
-* Acrescentar a janela com o aspeto partilhado pelos programas da suíte, nos oito idiomas.
+* Ver a janela num ecrã de cada sistema e ajustar o que se encontrar.
 * Experimentá-lo com ficheiros reais e com os outros programas da suíte.
 
 ## 🌍 Idiomas

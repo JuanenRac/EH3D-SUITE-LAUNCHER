@@ -18,7 +18,7 @@
 
 ---
 
-**Ehrlichkeitscheck - was heute wirklich läuft:** eine Rust-Bibliothek und ein Kommandozeilenprogramm (`eh3d-launcher`) mit 73 Tests, die auf einem Computer laufen: findet die Programme der Suite über ihre Manifeste, startet sie und startet sie bei Fehlern neu, führt die zuletzt verwendeten Projekte und schreibt und prüft die Projektdatei mit dem SHA-256 jeder Datei. Es hat noch kein Fenster, wurde an keiner Maschine ausprobiert und nicht an einer Sammlung echter Dateien geprüft.
+**Ehrlichkeitscheck - was heute wirklich läuft:** eine Rust-Bibliothek und ein Kommandozeilenprogramm (`eh3d-launcher`) mit 100 Tests, die auf einem Computer laufen: findet die Programme der Suite über ihre Manifeste, startet sie und startet sie bei Fehlern neu, führt die zuletzt verwendeten Projekte und schreibt und prüft die Projektdatei mit dem SHA-256 jeder Datei. Ein Fenster (`eh3d-launcher-gui`, mit dem Feature `gui` gebaut) ist geschrieben und seine Logik getestet, aber es wurde weder gebaut noch auf einem Bildschirm angesehen; nichts wurde an einer Maschine ausprobiert und nichts an einer Sammlung echter Dateien geprüft.
 
 ---
 
@@ -31,7 +31,7 @@
 |---|---|
 | Version | `0.0.4` |
 | Reifegrad | Gerüst |
-| Tests | 73 |
+| Tests | 100 |
 | Technologie-Stack | Rust |
 | Auf echter Hardware | Nicht erprobt: nichts davon lief an einer Maschine |
 
@@ -47,9 +47,9 @@ Jede Zeile ist ein Teil dieses Repositorys, und die Ampel sagt, wie weit er heut
 |---|---|---|
 | Kern | 🟡 | findet die Programme der Suite über ihre Manifeste, startet sie und startet sie bei Fehlern neu, führt die zuletzt verwendeten Projekte und schreibt und prüft die Projektdatei mit dem SHA-256 jeder Datei; am Computer mit normalen und beschädigten Eingaben getestet, nicht mit einer Sammlung echter Dateien. |
 | Kommandozeile | 🟡 | `eh3d-launcher` führt dieselben Funktionen wie die Bibliothek aus und gibt das Ergebnis aus; jeder Fehler kommt als Meldung mit einem Exit-Code ungleich null zurück. |
-| Tests | 🟡 | 73 Tests bestehen (`cargo test`), mit Normalfällen, Grenzfällen und beschädigten Eingaben. |
+| Tests | 🟡 | 100 Tests bestehen (`cargo test`), mit Normalfällen, Grenzfällen und beschädigten Eingaben. |
 | Sicherheit | 🟡 | Reines sicheres Rust (`forbid(unsafe_code)`): nichts gerät bei den übergebenen Dateien in Panik und ein schlechter Wert ist ein Fehler mit Begründung; keine unabhängige Prüfung. |
-| Fenster | 🔴 | Geplant: das egui-Fenster, das die Suite gemeinsam nutzt; heute gibt es nur die Kommandozeile. |
+| Fenster | 🟠 | Geschrieben (egui, `--features gui`, Programm `eh3d-launcher-gui`): die letzten Projekte, Projekt öffnen oder anlegen, seine Dateien mit den Prüfungen der Kommandozeile hinzufügen und entfernen, und die Programme der Suite mit einer Schaltfläche zum Starten jedes Programms; seine Logik ist getestet, aber es wurde noch nicht gebaut oder auf einem Bildschirm angesehen. |
 | Echte Hardware | 🔴 | Nicht erprobt: nichts davon wurde an einer Maschine ausgeführt. |
 | Dokumentation | 🟡 | README in acht Sprachen, das Changelog und die zwei aus `docs/` gezeichneten Bilder. |
 
@@ -59,10 +59,11 @@ Jede Zeile ist ein Teil dieses Repositorys, und die Ampel sagt, wie weit er heut
 * **Der Starter** (`src/launch.rs`): startet ein Programm der Suite und startet es bei einem Fehler bis zu zweimal neu, mit sich verdoppelnder Wartezeit; ein Programm, das gut endet, wird in Ruhe gelassen.
 * **Die Projektdatei** (`src/project.rs`, `.eh3dlist`): Name, die Dateien des Auftrags mit Art und SHA-256 und der Arbeitsnullpunkt; beim Lesen werden Pfade, die das Projekt verlassen, abgelehnt und das erste Format migriert. **Zuletzt verwendet** (`src/recent.rs`) merkt sich die letzten zehn.
 * **Finden und Neustart:** Die Programmdatei wird über den `[[bin]]`-Namen der `Cargo.toml` gefunden (`eh3d-camdebug`, `eh3d-pnp` ...); ein Programm, das der Bediener absichtlich beendet hat (Signal) oder das seine Argumente abgelehnt hat (Exit-Code 1 oder 2), wird nicht neu gestartet: nur ein Absturz.
+* **Das Fenster** (`src/window.rs`, `src/gui.rs`; `--features gui`, Programm `eh3d-launcher-gui`): die letzten Projekte, Projekt öffnen oder anlegen, seine Dateien mit denselben Prüfungen wie `add-layer` hinzufügen und entfernen, und die Programme der Suite mit einer Schaltfläche, die jedes mit dem Projekt startet. Zustand, Aktionen, Einstellungen und Wörter sind einfacher Code mit Tests; das Zeichnen ist dünn. Geschrieben, noch nicht auf einem Bildschirm gesehen.
 
 ## 🧩 Rolle in EH3D
 
-EH3D-SUITE-LAUNCHER ist ein Programm der EH3D Fabrication Suite. Heute arbeitet es als Bibliothek und Kommandozeile; sein Fenster im gemeinsamen Aussehen der Suite ist geplant. Es liest und schreibt einfache Dateien und lässt sich allein oder zwischen den anderen Programmen nutzen.
+EH3D-SUITE-LAUNCHER ist ein Programm der EH3D Fabrication Suite. Es arbeitet als Bibliothek, als Kommandozeile und, mit dem Feature `gui` gebaut, als Fenster (`eh3d-launcher-gui`) im gemeinsamen Aussehen der Suite. Es liest und schreibt einfache Dateien und lässt sich allein oder zwischen den anderen Programmen nutzen.
 
 ## 🏛️ Architektur
 
@@ -98,12 +99,18 @@ Die Bibliothek ist `eh3d_suite_launcher` (`use eh3d_suite_launcher::...`); die K
 ```text
 EH3D-SUITE-LAUNCHER/
 ├── src/
+│   ├── browse.rs                                die Dateiliste des Fensters zum Öffnen einer Datei
+│   ├── gui.rs                                   das Fenster (egui, mit dem Feature gui): zeichnet den Zustand und gibt weiter, was die Person tut
+│   ├── gui_main.rs                              das Fenster als eigenes Programm, unter Windows ohne Konsole
+│   ├── lang.rs                                  die Wörter des Fensters in den acht Sprachen
 │   ├── launch.rs                                ein Teil der Logik
 │   ├── lib.rs                                   die Bibliothek: was jeder Befehl nutzt
 │   ├── main.rs                                  die Kommandozeile
 │   ├── project.rs                               ein Teil der Logik
 │   ├── recent.rs                                ein Teil der Logik
-│   └── registry.rs                              ein Teil der Logik
+│   ├── registry.rs                              ein Teil der Logik
+│   ├── settings.rs                              die Einstellungen aus launcher.cfg: Sprache, Neustarts und Fenstergröße
+│   └── window.rs                                der Zustand des Fensters ohne Bildschirm: Programme, Projekte, Dateien und Start
 ├── tests/
 │   └── launcher.rs                              Tests von Bibliothek und Kommandozeile
 ├── docs/
@@ -117,30 +124,38 @@ EH3D-SUITE-LAUNCHER/
 ├── rust-toolchain.toml                          die festgelegte Rust-Toolchain
 ├── CHANGELOG.md                                 was sich in jeder Version geändert hat
 ├── SECURITY.md SUPPORT.md                       Schwachstellen melden und Fragen stellen
-└── CONTRIBUTING.md CODE_OF_CONDUCT.md LICENSE   Mitwirken, Verhaltenskodex und Lizenz
+├── CONTRIBUTING.md CODE_OF_CONDUCT.md LICENSE   Mitwirken, Verhaltenskodex und Lizenz
+└── launcher.cfg.example                         alle Einstellungen von launcher.cfg mit ihrem Standardwert
 ```
 
 ## ⚙️ Konfiguration
 
-Die einzige Konfigurationsdatei ist `launcher.cfg` im Ordner des Launchers, nur von `launch` gelesen: Ihre Zeile `workspace = VOLLSTÄNDIGER_PFAD` ist der Ordner, aus dem Programme gestartet werden (nur bekannte Programme der Suite). Davon abgesehen: Was die Person wählt, wird als Argument der Kommandozeile angegeben (siehe Schnittstellen), und jeder Standardwert steht in der Hilfe des Befehls (`eh3d-launcher help`). Die festen Grenzen stehen als benannte Konstanten im Code und sind durch Tests abgedeckt.
+Die Konfigurationsdatei ist `launcher.cfg` im Ordner des Launchers, von `launch` und vom Fenster gelesen: Ihre Zeile `workspace = VOLLSTÄNDIGER_PFAD` ist der Ordner, aus dem Programme gestartet werden (nur bekannte Programme der Suite), und die optionalen Zeilen `language`, `max_restarts`, `backoff_ms`, `window_width` und `window_height` legen die Sprache des Fensters fest, wie oft ein abgestürztes Programm neu gestartet wird, die Wartezeit und die Größe des Fensters. `launcher.cfg.example` listet jeden Schlüssel mit Standardwert und Grenzen auf. Davon abgesehen: Was die Person wählt, wird als Argument der Kommandozeile angegeben (siehe Schnittstellen), und jeder Standardwert steht in der Hilfe des Befehls (`eh3d-launcher help`). Die Grenzen eines Werts sind benannte Konstanten im Code und durch Tests abgedeckt.
 
 ## 🚀 Schnellstart
 
-Sie brauchen eine stabile Rust-Toolchain (1.75 oder neuer).
+Sie brauchen eine stabile Rust-Toolchain (1.95 oder neuer).
 
 ```bash
 cargo build --release
 cargo test
 cargo run --release -- list --workspace ..
+# das Fenster (braucht das Feature gui)
+cargo build --release --features gui
+cargo run --release --features gui --bin eh3d-launcher-gui
 ```
 
 ## 🧪 Tests
 
-Die Suite hat 73 Tests (`cargo test`, in der CI unter Windows und Linux). Sie prüfen Normalfälle, Grenzfälle und beschädigte Eingaben: leere Dateien, Datenmüll und abgeschnittene Dateien lösen nie eine Panik aus. Die CI führt außerdem `cargo fmt --check`, `cargo clippy` mit Warnungen als Fehlern und `python -I tools/ci_validate.py` aus.
+Die Suite hat 100 Tests (`cargo test`, in der CI unter Windows und Linux). Sie prüfen Normalfälle, Grenzfälle und beschädigte Eingaben: leere Dateien, Datenmüll und abgeschnittene Dateien lösen nie eine Panik aus. Die CI führt außerdem `cargo fmt --check`, `cargo clippy` (auch mit `--features gui`) mit Warnungen als Fehlern und `python -I tools/ci_validate.py` aus.
 
 ## 🏗️ Build und Veröffentlichung
 
 Die Version steht in `Cargo.toml` und in `eh3d.project.json`; jede Version hat ihren Eintrag in [CHANGELOG.md](CHANGELOG.md). `build.bat` / `build.sh` bauen das Programm, `test.bat` / `test.sh` führen die Tests aus und `run.bat` / `run.sh` starten es mit einem Beispiel. Releases erscheinen auf GitHub.
+
+### Downloads
+
+Jedes Release enthält das Kommandozeilenprogramm und das Fenster für Windows (64 und 32 Bit), Linux (64 Bit) und macOS (Apple Silicon und Intel) als `<Name>-<Version>-<System>.zip` (Windows) oder `.tar.gz` mit den beiden Programmen, der Lizenz, der Readme, dem Symbol und `launcher.cfg.example`. Die Dateien werden von GitHub Actions gebaut und stehen in `SHA256SUMS`. Um einen Download zu prüfen, vergleichen Sie seinen Hash mit der danebenliegenden `.sha256`-Datei (`sha256sum -c`).
 
 ## 📂 Struktur des Repositorys
 
@@ -153,11 +168,24 @@ Die Version steht in `Cargo.toml` und in `eh3d.project.json`; jede Version hat i
 
 ```text
 EH3D-SUITE-LAUNCHER/
-├── crates/
-│   ├── eh3d-parser-gerber/                      Gerber-RS-274X-Leser
-│   ├── eh3d-parser-excellon/                    Leser für Excellon-Bohrdateien
-│   └── eh3d-parser-gcode/                       G-Code-Leser und modaler Interpreter
-├── docs/                                        READERS.md, was jeder Leser verspricht und was nicht, und die Daten der beiden Bilder
+├── src/
+│   ├── browse.rs                                die Dateiliste des Fensters zum Öffnen einer Datei
+│   ├── gui.rs                                   das Fenster (egui, mit dem Feature gui): zeichnet den Zustand und gibt weiter, was die Person tut
+│   ├── gui_main.rs                              das Fenster als eigenes Programm, unter Windows ohne Konsole
+│   ├── lang.rs                                  die Wörter des Fensters in den acht Sprachen
+│   ├── launch.rs                                ein Teil der Logik
+│   ├── lib.rs                                   die Bibliothek: was jeder Befehl nutzt
+│   ├── main.rs                                  die Kommandozeile
+│   ├── project.rs                               ein Teil der Logik
+│   ├── recent.rs                                ein Teil der Logik
+│   ├── registry.rs                              ein Teil der Logik
+│   ├── settings.rs                              die Einstellungen aus launcher.cfg: Sprache, Neustarts und Fenstergröße
+│   └── window.rs                                der Zustand des Fensters ohne Bildschirm: Programme, Projekte, Dateien und Start
+├── tests/
+│   └── launcher.rs                              Tests von Bibliothek und Kommandozeile
+├── docs/
+│   ├── architecture.json                        Daten des Architektur-Bildes
+│   └── structure.json                           Daten des Struktur-Bildes
 ├── tools/                                       CI-Prüfung, README-Prüfung und die Bildwerkzeuge
 ├── images/                                      Banner und die Bilder von Architektur und Repository-Struktur
 ├── .github/                                     CI- und Release-Workflows, Vorlagen für Issues und Pull Requests
@@ -166,7 +194,8 @@ EH3D-SUITE-LAUNCHER/
 ├── rust-toolchain.toml                          die festgelegte Rust-Toolchain
 ├── CHANGELOG.md                                 was sich in jeder Version geändert hat
 ├── SECURITY.md SUPPORT.md                       Schwachstellen melden und Fragen stellen
-└── CONTRIBUTING.md CODE_OF_CONDUCT.md LICENSE   Mitwirken, Verhaltenskodex und Lizenz
+├── CONTRIBUTING.md CODE_OF_CONDUCT.md LICENSE   Mitwirken, Verhaltenskodex und Lizenz
+└── launcher.cfg.example                         alle Einstellungen von launcher.cfg mit ihrem Standardwert
 ```
 
 </details>
@@ -175,14 +204,14 @@ EH3D-SUITE-LAUNCHER/
 
 **Bekannte Grenzen heute**
 
-* Es hat noch kein Fenster: nur Bibliothek und Kommandozeile existieren.
+* Das Fenster ist geschrieben und seine Logik getestet, wurde aber noch nicht gebaut oder auf einem Bildschirm angesehen.
 * Es wurde weder an einer Maschine noch mit einer Sammlung echter Dateien erprobt und hatte keine unabhängige Prüfung.
 * Es findet noch keine Maschinen im Netz, hält die Suite nicht aktuell (das macht EH3D-UPDATER) und die `.eh3dlist` ist eine JSON-Datei, die auf die Dateien zeigt, kein Archiv, das sie enthält.
 
 **Als Nächstes**
 
 * Die Maschinen der Werkstatt im Netz finden und EH3D-UPDATER aus dem Fenster aufrufen.
-* Das Fenster im gemeinsamen Aussehen der Suite in den acht Sprachen ergänzen.
+* Das Fenster auf einem Bildschirm jedes Systems ansehen und das Gefundene anpassen.
 * Mit echten Dateien und den anderen Programmen der Suite ausprobieren.
 
 ## 🌍 Sprachen

@@ -3,6 +3,7 @@
   "ecosystem": "eh3d",
   "svg": "en",
   "exempt": [
+    "build.rs",
     "build.bat",
     "build.sh",
     "run.bat",
@@ -26,6 +27,58 @@
       "span": 3,
       "accent": "a",
       "rows": [
+        {
+          "name": "browse.rs",
+          "desc": {
+            "en": "the list of files of the window that opens a file",
+            "es": "la lista de ficheros de la ventana que abre un fichero",
+            "de": "die Dateiliste des Fensters zum Öffnen einer Datei",
+            "fr": "la liste des fichiers de la fenêtre d'ouverture d'un fichier",
+            "it": "l'elenco dei file della finestra che apre un file",
+            "ja": "ファイルを開くウィンドウのファイル一覧",
+            "zh": "打开文件窗口的文件列表",
+            "pt": "a lista de ficheiros da janela que abre um ficheiro"
+          }
+        },
+        {
+          "name": "gui.rs",
+          "desc": {
+            "en": "the window (egui, with the gui feature): draws the state and passes on what the person does",
+            "es": "la ventana (egui, con la característica gui): dibuja el estado y transmite lo que hace la persona",
+            "de": "das Fenster (egui, mit dem Feature gui): zeichnet den Zustand und gibt weiter, was die Person tut",
+            "fr": "la fenêtre (egui, avec la fonctionnalité gui) : dessine l'état et transmet ce que fait la personne",
+            "it": "la finestra (egui, con la funzione gui): disegna lo stato e inoltra ciò che fa la persona",
+            "ja": "ウィンドウ（egui、gui 機能）：状態を描き、操作を伝える",
+            "zh": "窗口（egui，gui 特性）：绘制状态并传递用户的操作",
+            "pt": "a janela (egui, com a funcionalidade gui): desenha o estado e transmite o que a pessoa faz"
+          }
+        },
+        {
+          "name": "gui_main.rs",
+          "desc": {
+            "en": "the window as a program of its own, without a console on Windows",
+            "es": "la ventana como programa propio, sin consola en Windows",
+            "de": "das Fenster als eigenes Programm, unter Windows ohne Konsole",
+            "fr": "la fenêtre comme programme à part, sans console sous Windows",
+            "it": "la finestra come programma a sé, senza console su Windows",
+            "ja": "独立したウィンドウ用プログラム（Windows ではコンソールなし）",
+            "zh": "作为独立程序的窗口，在 Windows 上没有控制台",
+            "pt": "a janela como programa à parte, sem consola no Windows"
+          }
+        },
+        {
+          "name": "lang.rs",
+          "desc": {
+            "en": "the words of the window in the eight languages",
+            "es": "las palabras de la ventana en los ocho idiomas",
+            "de": "die Wörter des Fensters in den acht Sprachen",
+            "fr": "les mots de la fenêtre dans les huit langues",
+            "it": "le parole della finestra nelle otto lingue",
+            "ja": "ウィンドウの文言（8言語）",
+            "zh": "窗口的文字（八种语言）",
+            "pt": "as palavras da janela nos oito idiomas"
+          }
+        },
         {
           "name": "launch.rs",
           "desc": {
@@ -102,6 +155,32 @@
             "ja": "ロジックの一部",
             "zh": "逻辑的一部分",
             "pt": "uma parte da lógica"
+          }
+        },
+        {
+          "name": "settings.rs",
+          "desc": {
+            "en": "the settings of launcher.cfg: language, restarts and window size",
+            "es": "los ajustes de launcher.cfg: idioma, reinicios y tamaño de la ventana",
+            "de": "die Einstellungen aus launcher.cfg: Sprache, Neustarts und Fenstergröße",
+            "fr": "les réglages de launcher.cfg : langue, relances et taille de la fenêtre",
+            "it": "le impostazioni di launcher.cfg: lingua, riavvii e dimensione della finestra",
+            "ja": "launcher.cfg の設定：言語、再起動、ウィンドウサイズ",
+            "zh": "launcher.cfg 的设置：语言、重启次数和窗口大小",
+            "pt": "as definições de launcher.cfg: idioma, reinícios e tamanho da janela"
+          }
+        },
+        {
+          "name": "window.rs",
+          "desc": {
+            "en": "the state of the window, no screen needed: programs, projects, files and launching",
+            "es": "el estado de la ventana sin pantalla: programas, proyectos, ficheros e inicio de programas",
+            "de": "der Zustand des Fensters ohne Bildschirm: Programme, Projekte, Dateien und Start",
+            "fr": "l'état de la fenêtre sans écran : programmes, projets, fichiers et lancement",
+            "it": "lo stato della finestra senza schermo: programmi, progetti, file e avvio",
+            "ja": "画面なしのウィンドウの状態：プログラム、プロジェクト、ファイル、起動",
+            "zh": "无需屏幕的窗口状态：程序、项目、文件和启动",
+            "pt": "o estado da janela sem ecrã: programas, projetos, ficheiros e arranque"
           }
         }
       ]
@@ -292,6 +371,19 @@
             "ja": "貢献方法、行動規範、ライセンス",
             "zh": "参与贡献、行为准则和许可证",
             "pt": "como contribuir, o código de conduta e a licença"
+          }
+        },
+        {
+          "name": "launcher.cfg.example",
+          "desc": {
+            "en": "every setting of launcher.cfg with its default",
+            "es": "todos los ajustes de launcher.cfg con su valor por defecto",
+            "de": "alle Einstellungen von launcher.cfg mit ihrem Standardwert",
+            "fr": "tous les réglages de launcher.cfg avec leur valeur par défaut",
+            "it": "tutte le impostazioni di launcher.cfg con il valore predefinito",
+            "ja": "launcher.cfg のすべての設定と既定値",
+            "zh": "launcher.cfg 的所有设置及其默认值",
+            "pt": "todas as definições de launcher.cfg com o valor predefinido"
           }
         }
       ]

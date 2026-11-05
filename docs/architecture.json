@@ -2,7 +2,7 @@
   "repo": "EH3D-SUITE-LAUNCHER",
   "ecosystem": "eh3d",
   "tagline": "Finds the programs of the suite, starts them and keeps the project file.",
-  "description": "EH3D-SUITE-LAUNCHER is a Rust library and command line that read the manifests of the repositories of the suite, start their programs (again when they fail) and keep the list of recent projects and the project file. It has no window yet.",
+  "description": "EH3D-SUITE-LAUNCHER is a Rust library and command line that read the manifests of the repositories of the suite, start their programs (again when they fail) and keep the list of recent projects and the project file. Built with the gui feature it also has a window (egui) with the recent projects, the files of the open project, the programs of the suite and a button to start each one.",
   "columns": [
     "WHO USES IT",
     "THIS REPOSITORY",
@@ -74,6 +74,23 @@
       ]
     },
     {
+      "id": "window",
+      "column": 1,
+      "level": "untested",
+      "title": "window (gui feature)",
+      "lines": [
+        "state, settings and words are",
+        "tested; the drawing is not seen"
+      ],
+      "code": [
+        "src/window.rs::pub struct Window",
+        "src/settings.rs::pub struct Settings",
+        "src/lang.rs::pub enum Lang",
+        "src/browse.rs::pub struct Browser",
+        "src/gui.rs::pub fn run"
+      ]
+    },
+    {
       "id": "manifests",
       "column": 2,
       "level": "external",
@@ -87,12 +104,14 @@
       "id": "std",
       "column": 2,
       "level": "external",
-      "title": "serde_json and sha2",
+      "title": "serde_json, sha2, egui",
       "lines": [
-        "the only two dependencies"
+        "two dependencies, plus egui",
+        "for the gui feature only"
       ],
       "code": [
-        "Cargo.toml::[dependencies]"
+        "Cargo.toml::[dependencies]",
+        "Cargo.toml::eframe"
       ]
     }
   ],
@@ -124,12 +143,18 @@
       "from": "project",
       "to": "std",
       "level": "tested"
+    },
+    {
+      "from": "person",
+      "to": "window",
+      "level": "untested"
     }
   ],
   "legend": {
-    "tested": "covered by tests on a computer (73 tests)",
+    "tested": "covered by tests on a computer (100 tests)",
     "config": "planned, not used today",
-    "external": "a person, a file or another repository"
+    "external": "a person, a file or another repository",
+    "untested": "written, not built or looked at on a screen yet"
   },
-  "footer": "No window and no discovery of machines yet."
+  "footer": "A window built with the gui feature that nobody has looked at on a screen yet, and no discovery of machines."
 }

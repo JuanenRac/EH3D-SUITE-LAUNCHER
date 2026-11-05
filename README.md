@@ -18,7 +18,7 @@
 
 ---
 
-**Honesty check - what actually runs today:** a Rust library and a command line program (`eh3d-launcher`) with 73 tests that run on a computer: finds the programs of the suite by their manifests, starts them and starts them again when they fail, keeps the recent projects and writes and checks the project file with the SHA-256 of every file. It has no window yet, it has not been tried on a machine and it has not been checked against a collection of real files.
+**Honesty check - what actually runs today:** a Rust library and a command line program (`eh3d-launcher`) with 100 tests that run on a computer: finds the programs of the suite by their manifests, starts them and starts them again when they fail, keeps the recent projects and writes and checks the project file with the SHA-256 of every file. A window (`eh3d-launcher-gui`, built with the `gui` feature) is written and its logic is tested, but it has not been built or looked at on a screen; nothing has been tried on a machine and nothing has been checked against a collection of real files.
 
 ---
 
@@ -31,7 +31,7 @@
 |---|---|
 | Version | `0.0.4` |
 | Maturity | Scaffolding |
-| Tests | 73 |
+| Tests | 100 |
 | Stack | Rust |
 | On real hardware | Not tried: nothing here has run on a machine |
 
@@ -47,9 +47,9 @@ Each line is one part of this repository and the light says how far it is today.
 |---|---|---|
 | Core | 🟡 | finds the programs of the suite by their manifests, starts them and starts them again when they fail, keeps the recent projects and writes and checks the project file with the SHA-256 of every file; tested on a computer with normal and damaged input, not with a collection of real files. |
 | Command line | 🟡 | `eh3d-launcher` runs the same functions as the library and prints the result; every error comes back as a message and a non-zero exit code. |
-| Tests | 🟡 | 73 tests pass (`cargo test`), with normal cases, edge cases and damaged input. |
+| Tests | 🟡 | 100 tests pass (`cargo test`), with normal cases, edge cases and damaged input. |
 | Security | 🟡 | Plain safe Rust (`forbid(unsafe_code)`): nothing panics on the files it is given and a bad value is an error with its reason; no independent review. |
-| Window | 🔴 | Planned: the egui window common to the suite; today there is only the command line. |
+| Window | 🟠 | Written (egui, `--features gui`, program `eh3d-launcher-gui`): the recent projects, open or create a project, add and remove its files with the checks of the command line, and the programs of the suite with a button to start each one; its logic is tested, but it has not been built or looked at on a screen yet. |
 | Real hardware | 🔴 | Not tried: nothing here has been run on a machine. |
 | Documentation | 🟡 | README in eight languages, the changelog and the two pictures drawn from `docs/`. |
 
@@ -59,10 +59,11 @@ Each line is one part of this repository and the light says how far it is today.
 * **The launcher** (`src/launch.rs`): starts a program of the suite and, if it ends with an error, starts it again up to two times with a waiting time that doubles; a program that ends well is left alone.
 * **The project file** (`src/project.rs`, `.eh3dlist`): the name, the files of the job with their kind and SHA-256, and the work zero; reading refuses paths that leave the project and migrates the first format. **Recent projects** (`src/recent.rs`) keeps the last ten.
 * **Finding and restarting:** the binary of a program is found by the `[[bin]]` name of its `Cargo.toml` (`eh3d-camdebug`, `eh3d-pnp`...), and a program the operator ended on purpose (a signal) or that refused its arguments (exit code 1 or 2) is not started again: only a crash is.
+* **The window** (`src/window.rs`, `src/gui.rs`; `--features gui`, program `eh3d-launcher-gui`): the recent projects, open or create a project, add and remove its files with the same checks as `add-layer`, and the programs of the suite with a button to start each one with the project. The state, the actions, the settings and the words are plain code with tests; the drawing is thin. Written, not seen on a screen yet.
 
 ## 🧩 Role in EH3D
 
-EH3D-SUITE-LAUNCHER is one program of the EH3D Fabrication Suite. Today it works as a library and a command line; its window, in the look the other programs of the suite share, is planned. It reads and writes plain files, so it can be used on its own or between the other programs.
+EH3D-SUITE-LAUNCHER is one program of the EH3D Fabrication Suite. It works as a library, a command line and, built with the `gui` feature, a window (`eh3d-launcher-gui`) in the look the other programs of the suite share. It reads and writes plain files, so it can be used on its own or between the other programs.
 
 ## 🏛️ Architecture
 
@@ -98,12 +99,18 @@ The library is `eh3d_suite_launcher` (`use eh3d_suite_launcher::...`); the comma
 ```text
 EH3D-SUITE-LAUNCHER/
 ├── src/
+│   ├── browse.rs                                the list of files of the window that opens a file
+│   ├── gui.rs                                   the window (egui, with the gui feature): draws the state and passes on what the person does
+│   ├── gui_main.rs                              the window as a program of its own, without a console on Windows
+│   ├── lang.rs                                  the words of the window in the eight languages
 │   ├── launch.rs                                a part of the logic
 │   ├── lib.rs                                   the library: what every command uses
 │   ├── main.rs                                  the command line
 │   ├── project.rs                               a part of the logic
 │   ├── recent.rs                                a part of the logic
-│   └── registry.rs                              a part of the logic
+│   ├── registry.rs                              a part of the logic
+│   ├── settings.rs                              the settings of launcher.cfg: language, restarts and window size
+│   └── window.rs                                the state of the window, no screen needed: programs, projects, files and launching
 ├── tests/
 │   └── launcher.rs                              tests of the library and the command line
 ├── docs/
@@ -117,30 +124,38 @@ EH3D-SUITE-LAUNCHER/
 ├── rust-toolchain.toml                          the pinned Rust toolchain
 ├── CHANGELOG.md                                 what changed in each version
 ├── SECURITY.md SUPPORT.md                       how to report a vulnerability and where to ask
-└── CONTRIBUTING.md CODE_OF_CONDUCT.md LICENSE   how to contribute, the code of conduct and the licence
+├── CONTRIBUTING.md CODE_OF_CONDUCT.md LICENSE   how to contribute, the code of conduct and the licence
+└── launcher.cfg.example                         every setting of launcher.cfg with its default
 ```
 
 ## ⚙️ Configuration
 
-The only configuration file is `launcher.cfg` in the folder of the launcher, read by `launch` alone: its line `workspace = FULL_PATH` is the folder the programs are started from (only the known programs of the suite are started). Apart from it, what a person chooses is given as arguments of the command line (see Interfaces) and every default is written in the help of the command (`eh3d-launcher help`). The fixed limits live in the code as named constants and are covered by tests.
+The configuration file is `launcher.cfg` in the folder of the launcher, read by `launch` and by the window: its line `workspace = FULL_PATH` is the folder the programs are started from (only the known programs of the suite are started), and the optional lines `language`, `max_restarts`, `backoff_ms`, `window_width` and `window_height` set the language of the window, how many times a program that crashed is started again, the waiting time and the size of the window. `launcher.cfg.example` lists every key with its default and its limits. Apart from it, what a person chooses is given as arguments of the command line (see Interfaces) and every default is written in the help of the command (`eh3d-launcher help`). The limits of a value are named constants of the code and are covered by tests.
 
 ## 🚀 Quick start
 
-You need a stable Rust toolchain (1.75 or newer).
+You need a stable Rust toolchain (1.95 or newer).
 
 ```bash
 cargo build --release
 cargo test
 cargo run --release -- list --workspace ..
+# the window (needs the gui feature)
+cargo build --release --features gui
+cargo run --release --features gui --bin eh3d-launcher-gui
 ```
 
 ## 🧪 Testing
 
-The suite has 73 tests (`cargo test`, run on Windows and Linux in the CI). They check the normal cases, the edge cases and damaged input: empty files, garbage and cut files never panic. The CI also runs `cargo fmt --check`, `cargo clippy` with warnings as errors and `python -I tools/ci_validate.py`.
+The suite has 100 tests (`cargo test`, run on Windows and Linux in the CI). They check the normal cases, the edge cases and damaged input: empty files, garbage and cut files never panic. The CI also runs `cargo fmt --check`, `cargo clippy` (also with `--features gui`) with warnings as errors and `python -I tools/ci_validate.py`.
 
 ## 🏗️ Build & Release
 
 The version lives in `Cargo.toml` and in `eh3d.project.json`; each version has its entry in [CHANGELOG.md](CHANGELOG.md). `build.bat` / `build.sh` build the program, `test.bat` / `test.sh` run the tests and `run.bat` / `run.sh` run it with a sample. Releases are published on GitHub.
+
+### Downloads
+
+Each release has the command line program and the window for Windows (64 and 32 bits), Linux (64 bits) and macOS (Apple silicon and Intel), as `<name>-<version>-<system>.zip` (Windows) or `.tar.gz` with the two programs, the licence, the readme, the icon and `launcher.cfg.example`. The files are built by GitHub Actions and listed in `SHA256SUMS`. To check a download, compare its hash with the `.sha256` file next to it (`sha256sum -c`).
 
 ## 📂 Repository Structure
 
@@ -153,11 +168,24 @@ The version lives in `Cargo.toml` and in `eh3d.project.json`; each version has i
 
 ```text
 EH3D-SUITE-LAUNCHER/
-├── crates/
-│   ├── eh3d-parser-gerber/                      Gerber RS-274X reader
-│   ├── eh3d-parser-excellon/                    Excellon drill file reader
-│   └── eh3d-parser-gcode/                       G-code reader and modal interpreter
-├── docs/                                        READERS.md, what every reader promises and what it does not do, and the data of the two pictures
+├── src/
+│   ├── browse.rs                                the list of files of the window that opens a file
+│   ├── gui.rs                                   the window (egui, with the gui feature): draws the state and passes on what the person does
+│   ├── gui_main.rs                              the window as a program of its own, without a console on Windows
+│   ├── lang.rs                                  the words of the window in the eight languages
+│   ├── launch.rs                                a part of the logic
+│   ├── lib.rs                                   the library: what every command uses
+│   ├── main.rs                                  the command line
+│   ├── project.rs                               a part of the logic
+│   ├── recent.rs                                a part of the logic
+│   ├── registry.rs                              a part of the logic
+│   ├── settings.rs                              the settings of launcher.cfg: language, restarts and window size
+│   └── window.rs                                the state of the window, no screen needed: programs, projects, files and launching
+├── tests/
+│   └── launcher.rs                              tests of the library and the command line
+├── docs/
+│   ├── architecture.json                        data of the Architecture picture
+│   └── structure.json                           data of the Repository Structure picture
 ├── tools/                                       CI check, README check and the picture tools
 ├── images/                                      banner and the Architecture and Repository Structure pictures
 ├── .github/                                     CI and release workflows, issue and pull-request templates
@@ -166,7 +194,8 @@ EH3D-SUITE-LAUNCHER/
 ├── rust-toolchain.toml                          the pinned Rust toolchain
 ├── CHANGELOG.md                                 what changed in each version
 ├── SECURITY.md SUPPORT.md                       how to report a vulnerability and where to ask
-└── CONTRIBUTING.md CODE_OF_CONDUCT.md LICENSE   how to contribute, the code of conduct and the licence
+├── CONTRIBUTING.md CODE_OF_CONDUCT.md LICENSE   how to contribute, the code of conduct and the licence
+└── launcher.cfg.example                         every setting of launcher.cfg with its default
 ```
 
 </details>
@@ -175,14 +204,14 @@ EH3D-SUITE-LAUNCHER/
 
 **Known limits today**
 
-* It has no window yet: only the library and the command line exist.
+* The window is written and its logic is tested, but it has not been built or looked at on a screen yet.
 * It has not been tried on a machine nor with a collection of real files, and it has had no independent review.
 * It does not discover machines on the network yet, does not keep the suite up to date (EH3D-UPDATER does) and the `.eh3dlist` is a JSON file that points at the files, not an archive that contains them.
 
 **Next**
 
 * Discover the machines of the workshop on the network and call EH3D-UPDATER from the window.
-* Add the window in the look shared by the programs of the suite, in the eight languages.
+* Look at the window on a screen of each system and adjust what is found.
 * Try it with real files and with the other programs of the suite.
 
 ## 🌍 Languages
