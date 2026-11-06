@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "name": "Demo board",
+  "layers": [
+    {
+      "path": "board.gtl",
+      "kind": "gerber",
+      "sha256": "71162ad2eeef64e982aaf34b42b80192d8d8786a8a0937d01880f3269d946a7c"
+    },
+    {
+      "path": "board.gko",
+      "kind": "gerber",
+      "sha256": "913ee7ed6ce49872697dd08acdad24d28e62672a3a6c11551f72b5c7acfc7d91"
+    },
+    {
+      "path": "board.drl",
+      "kind": "drill",
+      "sha256": "ba62d24daac376c14050fe3b092fa988f3d54dc80734c111689d1e30f252dfb0"
+    }
+  ],
+  "zero": {
+    "x": 0.0,
+    "y": 0.0
+  }
+}

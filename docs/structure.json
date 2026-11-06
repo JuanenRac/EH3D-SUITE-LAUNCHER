@@ -171,6 +171,19 @@
           }
         },
         {
+          "name": "shot.rs",
+          "desc": {
+            "en": "the picture mode of the window (--shot): its arguments, read and checked without a screen",
+            "es": "el modo de captura de la ventana (--shot): sus argumentos, leídos y comprobados sin pantalla",
+            "de": "der Bildmodus des Fensters (--shot): seine Argumente, ohne Bildschirm gelesen und geprüft",
+            "fr": "le mode capture de la fenêtre (--shot) : ses arguments, lus et vérifiés sans écran",
+            "it": "la modalità immagine della finestra (--shot): i suoi argomenti, letti e verificati senza schermo",
+            "ja": "ウィンドウの画像モード（--shot）：画面なしで読み取り・検証される引数",
+            "zh": "窗口的截图模式（--shot）：无需屏幕即可读取和检查其参数",
+            "pt": "o modo de captura da janela (--shot): os seus argumentos, lidos e verificados sem ecrã"
+          }
+        },
+        {
           "name": "window.rs",
           "desc": {
             "en": "the state of the window, no screen needed: programs, projects, files and launching",
@@ -201,6 +214,52 @@
             "ja": "ライブラリとコマンドラインのテスト",
             "zh": "库和命令行的测试",
             "pt": "testes da biblioteca e da linha de comandos"
+          }
+        },
+        {
+          "name": "shot_sample.rs",
+          "desc": {
+            "en": "tests of the samples in the window of a picture",
+            "es": "pruebas de las muestras en la ventana de una captura",
+            "de": "Tests der Beispiele im Fenster eines Bildes",
+            "fr": "tests des exemples dans la fenêtre d'une capture",
+            "it": "test degli esempi nella finestra di un'immagine",
+            "ja": "画像用ウィンドウでのサンプルのテスト",
+            "zh": "截图窗口中示例的测试",
+            "pt": "testes dos exemplos na janela de uma captura"
+          }
+        }
+      ]
+    },
+    {
+      "name": "examples/",
+      "span": 3,
+      "accent": "d",
+      "rows": [
+        {
+          "name": "workspace/",
+          "desc": {
+            "en": "sample manifests of programs of the suite, to show in the window of a picture",
+            "es": "manifiestos de muestra de programas de la suite, para mostrar en la ventana de una captura",
+            "de": "Beispiel-Manifeste von Programmen der Suite, für das Fenster eines Bildes",
+            "fr": "manifestes d'exemple de programmes de la suite, à afficher dans la fenêtre d'une capture",
+            "it": "manifesti di esempio di programmi della suite, da mostrare nella finestra di un'immagine",
+            "ja": "スイートのプログラムのサンプルマニフェスト（画像用ウィンドウで表示）",
+            "zh": "套件程序的示例清单，用于在截图窗口中显示",
+            "pt": "manifestos de exemplo de programas da suite, para mostrar na janela de uma captura"
+          }
+        },
+        {
+          "name": "demo/",
+          "desc": {
+            "en": "a sample project list with three files and their checksums",
+            "es": "una lista de proyecto de muestra con tres archivos y sus sumas de comprobación",
+            "de": "eine Beispiel-Projektliste mit drei Dateien und ihren Prüfsummen",
+            "fr": "une liste de projet d'exemple avec trois fichiers et leurs sommes de contrôle",
+            "it": "un elenco di progetto di esempio con tre file e le loro somme di controllo",
+            "ja": "3つのファイルとそのチェックサムを含むサンプルのプロジェクト一覧",
+            "zh": "包含三个文件及其校验和的示例项目列表",
+            "pt": "uma lista de projeto de exemplo com três ficheiros e as suas somas de verificação"
           }
         }
       ]

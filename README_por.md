@@ -18,7 +18,7 @@
 
 ---
 
-**Verificação de honestidade - o que funciona hoje:** uma biblioteca Rust e um programa de linha de comandos (`eh3d-launcher`) com 100 testes que correm num computador: encontra os programas da suíte pelos seus manifestos, arranca-os e volta a arrancá-los se falharem, guarda os projetos recentes e escreve e verifica o ficheiro de projeto com o SHA-256 de cada ficheiro. Uma janela (`eh3d-launcher-gui`, compilada com a funcionalidade `gui`) está escrita e a sua lógica está testada, mas não foi compilada nem vista num ecrã; nada foi experimentado numa máquina e nada foi verificado com uma coleção de ficheiros reais.
+**Verificação de honestidade - o que funciona hoje:** uma biblioteca Rust e um programa de linha de comandos (`eh3d-launcher`) com 113 testes que correm num computador: encontra os programas da suíte pelos seus manifestos, arranca-os e volta a arrancá-los se falharem, guarda os projetos recentes e escreve e verifica o ficheiro de projeto com o SHA-256 de cada ficheiro. Uma janela (`eh3d-launcher-gui`, compilada com a funcionalidade `gui`) está escrita e a sua lógica está testada, mas não foi compilada nem vista num ecrã; nada foi experimentado numa máquina e nada foi verificado com uma coleção de ficheiros reais.
 
 ---
 
@@ -31,7 +31,7 @@
 |---|---|
 | Versão | `0.0.5` |
 | Maturidade | Estrutura inicial |
-| Testes | 100 |
+| Testes | 113 |
 | Tecnologias | Rust |
 | Em hardware real | Não experimentado: nada disto correu numa máquina |
 
@@ -47,7 +47,7 @@ Cada linha é uma parte deste repositório e a luz diz até onde chega hoje. É 
 |---|---|---|
 | Núcleo | 🟡 | encontra os programas da suíte pelos seus manifestos, arranca-os e volta a arrancá-los se falharem, guarda os projetos recentes e escreve e verifica o ficheiro de projeto com o SHA-256 de cada ficheiro; testado num computador com entradas normais e danificadas, não com uma coleção de ficheiros reais. |
 | Linha de comandos | 🟡 | `eh3d-launcher` executa as mesmas funções da biblioteca e imprime o resultado; cada erro volta como mensagem e código de saída diferente de zero. |
-| Testes | 🟡 | 100 testes passam (`cargo test`), com casos normais, casos-limite e entradas danificadas. |
+| Testes | 🟡 | 113 testes passam (`cargo test`), com casos normais, casos-limite e entradas danificadas. |
 | Segurança | 🟡 | Rust seguro e simples (`forbid(unsafe_code)`): nada entra em pânico com os ficheiros recebidos e um valor mau é um erro com o seu motivo; sem revisão independente. |
 | Janela | 🟠 | Escrita (egui, `--features gui`, programa `eh3d-launcher-gui`): os projetos recentes, abrir ou criar um projeto, adicionar e remover os seus ficheiros com as verificações da linha de comandos e os programas da suíte com um botão para iniciar cada um; a sua lógica está testada, mas ainda não foi compilada nem vista num ecrã. |
 | Hardware real | 🔴 | Não experimentado: nada disto foi executado numa máquina. |
@@ -110,9 +110,14 @@ EH3D-SUITE-LAUNCHER/
 │   ├── recent.rs                                uma parte da lógica
 │   ├── registry.rs                              uma parte da lógica
 │   ├── settings.rs                              as definições de launcher.cfg: idioma, reinícios e tamanho da janela
+│   ├── shot.rs                                  o modo de captura da janela (--shot): os seus argumentos, lidos e verificados sem ecrã
 │   └── window.rs                                o estado da janela sem ecrã: programas, projetos, ficheiros e arranque
 ├── tests/
-│   └── launcher.rs                              testes da biblioteca e da linha de comandos
+│   ├── launcher.rs                              testes da biblioteca e da linha de comandos
+│   └── shot_sample.rs                           testes dos exemplos na janela de uma captura
+├── examples/
+│   ├── workspace/                               manifestos de exemplo de programas da suite, para mostrar na janela de uma captura
+│   └── demo/                                    uma lista de projeto de exemplo com três ficheiros e as suas somas de verificação
 ├── docs/
 │   ├── architecture.json                        dados da imagem de Arquitetura
 │   └── structure.json                           dados da imagem de Estrutura
@@ -143,11 +148,14 @@ cargo run --release -- list --workspace ..
 # a janela (precisa da funcionalidade gui)
 cargo build --release --features gui
 cargo run --release --features gui --bin eh3d-launcher-gui
+cargo run --release --features gui --bin eh3d-launcher-gui -- --shot screen.png --open examples/workspace --open examples/demo/demo.eh3dlist   # a picture of the window
 ```
+
+Para tirar uma captura da janela sem a abrir à mão, execute-o com `--shot FICHEIRO.png` (também `--size WxH`, `--theme forge|dark|light`, `--wait N`, `--lang CODE`, `--open FILE`, `--replace`): abre-se com esse tamanho, guarda o PNG, não guarda definições e fecha-se sozinho (código de saída 0 se o ficheiro foi escrito, 1 se não, 2 se os argumentos estiverem errados).
 
 ## 🧪 Testes
 
-O conjunto tem 100 testes (`cargo test`, executados em Windows e Linux no CI). Verificam os casos normais, os casos-limite e as entradas danificadas: ficheiros vazios, lixo e ficheiros cortados nunca provocam pânico. O CI executa ainda `cargo fmt --check`, `cargo clippy` (também com `--features gui`) com avisos como erros e `python -I tools/ci_validate.py`.
+O conjunto tem 113 testes (`cargo test`, executados em Windows e Linux no CI). Verificam os casos normais, os casos-limite e as entradas danificadas: ficheiros vazios, lixo e ficheiros cortados nunca provocam pânico. O CI executa ainda `cargo fmt --check`, `cargo clippy` (também com `--features gui`) com avisos como erros e `python -I tools/ci_validate.py`.
 
 ## 🏗️ Compilação e publicação
 
@@ -180,9 +188,14 @@ EH3D-SUITE-LAUNCHER/
 │   ├── recent.rs                                uma parte da lógica
 │   ├── registry.rs                              uma parte da lógica
 │   ├── settings.rs                              as definições de launcher.cfg: idioma, reinícios e tamanho da janela
+│   ├── shot.rs                                  o modo de captura da janela (--shot): os seus argumentos, lidos e verificados sem ecrã
 │   └── window.rs                                o estado da janela sem ecrã: programas, projetos, ficheiros e arranque
 ├── tests/
-│   └── launcher.rs                              testes da biblioteca e da linha de comandos
+│   ├── launcher.rs                              testes da biblioteca e da linha de comandos
+│   └── shot_sample.rs                           testes dos exemplos na janela de uma captura
+├── examples/
+│   ├── workspace/                               manifestos de exemplo de programas da suite, para mostrar na janela de uma captura
+│   └── demo/                                    uma lista de projeto de exemplo com três ficheiros e as suas somas de verificação
 ├── docs/
 │   ├── architecture.json                        dados da imagem de Arquitetura
 │   └── structure.json                           dados da imagem de Estrutura

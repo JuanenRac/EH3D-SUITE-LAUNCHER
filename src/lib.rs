@@ -12,4 +12,5 @@ pub mod project;
 pub mod recent;
 pub mod registry;
 pub mod settings;
+pub mod shot;
 pub mod window;

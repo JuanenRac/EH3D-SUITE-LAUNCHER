@@ -230,6 +230,10 @@ pub struct Window {
     pub with_project: bool,
     /// The programs that are running now.
     pub running: Vec<String>,
+    /// True in the window of a picture: nothing is read from or written to the files of the person (no `launcher.cfg`, no recent projects).
+    ephemeral: bool,
+    /// The folder of the programs of the window of a picture, taken from its arguments and not from `launcher.cfg`.
+    fixed_workspace: Option<PathBuf>,
 }
 
 impl Window {
@@ -255,10 +259,40 @@ impl Window {
             show_all: false,
             with_project: true,
             running: Vec::new(),
+            ephemeral: false,
+            fixed_workspace: None,
         };
         w.reload();
         if let Some(e) = bad {
             w.status = Status::BadSettings(e);
+        }
+        w
+    }
+
+    /// The window of a picture: the default settings, the folder of the programs and the project list that are given (either may be missing) and a list of recent projects that
+    /// lives only in memory, so that nothing of the person's files is read or changed. The paths stay as they were given.
+    pub fn for_shot(workspace: Option<PathBuf>, project: Option<PathBuf>, lang: Lang) -> Window {
+        let mut w = Window {
+            lang,
+            settings: Settings::default(),
+            data_dir: PathBuf::new(),
+            workspace: None,
+            workspace_error: None,
+            programs: Vec::new(),
+            skipped: Vec::new(),
+            recent: Vec::new(),
+            project: None,
+            details: Vec::new(),
+            status: Status::Ready,
+            show_all: false,
+            with_project: true,
+            running: Vec::new(),
+            ephemeral: true,
+            fixed_workspace: workspace,
+        };
+        w.reload();
+        if let Some(file) = project {
+            w.open_project(&file);
         }
         w
     }
@@ -275,8 +309,19 @@ impl Window {
 
     /// Reads the programs of the workspace and the recent projects again.
     fn reload(&mut self) {
-        self.recent = recent::load(&self.recent_path());
-        match configured_workspace(&self.data_dir, self.lang.code()) {
+        let found = if self.ephemeral {
+            self.fixed_workspace.clone().ok_or_else(|| {
+                message(
+                    LaunchMsg::NoWorkspace,
+                    self.lang.code(),
+                    crate::launch::CONFIG_FILE,
+                )
+            })
+        } else {
+            self.recent = recent::load(&self.recent_path());
+            configured_workspace(&self.data_dir, self.lang.code())
+        };
+        match found {
             Ok(ws) => {
                 let (modules, problems) = discover(&ws);
                 self.programs = modules
@@ -374,9 +419,17 @@ impl Window {
 
     /// Opens a project list and puts it at the head of the recent ones.
     pub fn open_project(&mut self, file: &Path) -> bool {
-        let full = match recent::canonical(&file.to_string_lossy()) {
-            Ok(f) => f,
-            Err(e) => return self.fail(e),
+        let full = if self.ephemeral {
+            // the window of a picture shows the path as it was given
+            if !file.is_file() {
+                return self.fail(format!("{}: not a file", file.display()));
+            }
+            file.to_string_lossy().into_owned()
+        } else {
+            match recent::canonical(&file.to_string_lossy()) {
+                Ok(f) => f,
+                Err(e) => return self.fail(e),
+            }
         };
         let loaded = match Project::load(Path::new(&full)) {
             Ok(p) => p,
@@ -391,10 +444,14 @@ impl Window {
             file: PathBuf::from(&full),
             project: loaded,
         });
-        match recent::add(&self.recent_path(), &full) {
-            Ok(list) => self.recent = list,
-            Err(e) => {
-                self.status = Status::Failed(e);
+        if self.ephemeral {
+            recent::remember(&mut self.recent, &full);
+        } else {
+            match recent::add(&self.recent_path(), &full) {
+                Ok(list) => self.recent = list,
+                Err(e) => {
+                    self.status = Status::Failed(e);
+                }
             }
         }
         true

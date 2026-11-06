@@ -5,6 +5,7 @@ All notable changes to this project are documented here.
 ## [Unreleased]
 
 - Update the SHA-256 library to its newer version.
+- **A picture mode for the window:** `eh3d-launcher-gui --shot FILE.png` (built with `--features gui`) opens the window at the size of `--size WxH` (320 to 8192, 1180x760 by default), with `--theme forge|dark|light`, `--lang CODE` and, from `--open`, a folder of programs and a project list, waits `--wait N` frames (0 to 3600, 6 by default), saves what it drew as a PNG file and closes by itself. An existing file is never replaced unless `--replace` is given, the window starts from the default settings, reads no `launcher.cfg` and keeps its list of recent projects only in memory in this mode (nothing of the person's files is read or written, and the paths show as they were given), the exit code is 0 when the file was written, 1 when it was not (also when the picture does not come back within 600 frames) and 2 for wrong arguments. The arguments are read by plain code with its tests, and `examples/` holds a sample folder of programs and a sample project list that the pictures show.
 
 ## [0.0.5] - The window with recent projects, layers and the launcher of the suite programs
 
