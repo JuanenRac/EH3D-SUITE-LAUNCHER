@@ -4,6 +4,8 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+- Update the SHA-256 library to its newer version.
+
 ## [0.0.5] - The window with recent projects, layers and the launcher of the suite programs
 
 - **A window:** built with the `gui` feature (egui, the look the other programs of the suite share), program `eh3d-launcher-gui`, which opens without a console on Windows. It lists the recent projects, opens or creates a project, adds and removes its files with the same checks as the command line, verifies the files, lists the programs of the suite and starts each one (with the file of the project as its argument when the person wants), in the eight languages. A program runs on its own thread, so the window keeps answering, and every error is the message of the library.
