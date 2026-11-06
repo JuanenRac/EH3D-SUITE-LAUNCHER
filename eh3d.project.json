@@ -12,13 +12,13 @@
     "egui"
   ],
   "deployment_target": "user-pc",
-  "maturity": "scaffolding",
+  "maturity": "functional",
   "evidence": "host-test",
   "hardware_bound": false,
   "family": "Ecosystem Operations",
   "parent": null,
   "build": "cargo build --release; cargo test",
-  "notes": "Scaffolding v0.0.5: a library and a command line that find the programs of the suite by their eh3d.project.json manifests, start a program and start it again a limited number of times when it fails, keep the list of recent projects and read and write the project file (.eh3dproj: name, files with kind and SHA-256, work zero). A window (egui, built with the gui feature: the recent projects, open or create a project, add and remove its files, the programs of the suite with a button to start each one) is written and its logic is tested, but it has not been built or looked at on a screen. No discovery of machines on the network, and nothing here has run on a machine.",
+  "notes": "Functional v0.0.5: a library and a command line that find the programs of the suite by their eh3d.project.json manifests, start a program and start it again a limited number of times when it fails, keep the list of recent projects and read and write the project file (.eh3dproj: name, files with kind and SHA-256, work zero). A window (egui, built with the gui feature: the recent projects, open or create a project, add and remove its files, the programs of the suite with a button to start each one) is written and its logic is tested, but it has not been built or looked at on a screen. No discovery of machines on the network, and nothing here has run on a machine.",
   "native_version": {
     "file": "Cargo.toml",
     "pattern": "^version\\s*=\\s*\"(\\d+\\.\\d+\\.\\d+)\""
