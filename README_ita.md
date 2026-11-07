@@ -18,7 +18,7 @@
 
 ---
 
-**Verifica di onestà - cosa funziona oggi:** una libreria Rust e un programma a riga di comando (`eh3d-launcher`) con 113 test eseguiti su un computer: trova i programmi della suite dai loro manifesti, li avvia e li riavvia se falliscono, conserva i progetti recenti e scrive e verifica il file di progetto con lo SHA-256 di ogni file. Una finestra (`eh3d-launcher-gui`, compilata con la funzione `gui`) è scritta e la sua logica è testata, ma non è stata compilata né guardata su uno schermo; nulla è stato provato su una macchina e nulla è stato verificato su una raccolta di file reali.
+**Verifica di onestà - cosa funziona oggi:** una libreria Rust e un programma a riga di comando (`eh3d-launcher`) con 119 test eseguiti su un computer: trova i programmi della suite dai loro manifesti, li avvia e li riavvia se falliscono, conserva i progetti recenti e scrive e verifica il file di progetto con lo SHA-256 di ogni file. Una finestra (`eh3d-launcher-gui`, compilata con la funzione `gui`) è scritta e la sua logica è testata, ma non è stata compilata né guardata su uno schermo; nulla è stato provato su una macchina e nulla è stato verificato su una raccolta di file reali.
 
 ---
 
@@ -31,7 +31,7 @@
 |---|---|
 | Versione | `0.0.5` |
 | Maturità | Impalcatura |
-| Test | 113 |
+| Test | 119 |
 | Stack tecnologico | Rust |
 | Su hardware reale | Non provato: nulla di questo ha girato su una macchina |
 
@@ -47,7 +47,7 @@ Ogni riga è una parte di questo repository e il semaforo dice a che punto è og
 |---|---|---|
 | Nucleo | 🟡 | trova i programmi della suite dai loro manifesti, li avvia e li riavvia se falliscono, conserva i progetti recenti e scrive e verifica il file di progetto con lo SHA-256 di ogni file; provato su un computer con input normali e danneggiati, non con una raccolta di file reali. |
 | Riga di comando | 🟡 | `eh3d-launcher` esegue le stesse funzioni della libreria e stampa il risultato; ogni errore torna come messaggio e codice di uscita diverso da zero. |
-| Test | 🟡 | 113 test passano (`cargo test`), con casi normali, casi limite e input danneggiati. |
+| Test | 🟡 | 119 test passano (`cargo test`), con casi normali, casi limite e input danneggiati. |
 | Sicurezza | 🟡 | Rust sicuro e semplice (`forbid(unsafe_code)`): nulla va in panico con i file ricevuti e un valore errato è un errore con il suo motivo; nessuna revisione indipendente. |
 | Finestra | 🟠 | Scritta (egui, `--features gui`, programma `eh3d-launcher-gui`): i progetti recenti, aprire o creare un progetto, aggiungere e rimuovere i suoi file con i controlli della riga di comando e i programmi della suite con un pulsante per avviare ciascuno; la sua logica è testata, ma non è ancora stata compilata né guardata su uno schermo. |
 | Hardware reale | 🔴 | Non provato: nulla di questo è stato eseguito su una macchina. |
@@ -79,6 +79,7 @@ Come si incastrano le parti di questo repository: chi lo usa, cosa contiene e da
 * **Libreria e riga di comando:** ogni comando di `eh3d-launcher` è una funzione della libreria, così un altro programma della suite può chiamarla senza avviare un processo.
 * **Test con input danneggiati:** i test forniscono anche file vuoti, spazzatura, numeri enormi e file tagliati, e nessuno può andare in panico.
 * **Nessuna ipotesi:** un valore privo di senso è un errore che dice quale e perché, mai un risultato che sembra solo giusto.
+* **Limite di dimensione dei file letti:** i manifesti dei repository e l'elenco dei progetti recenti si leggono solo se non superano `max_file_mib` di `launcher.cfg` (16 MiB di default, da 1 a 1024), nella riga di comando e nella finestra, e `launcher.cfg` stesso fino a 1 MiB; un manifesto troppo grande è saltato con il codice `file_too_large` e il suo nome come ogni manifesto danneggiato, `eh3d-launcher recent` termina con quel codice per un elenco troppo grande e la finestra parte con l'elenco vuoto. Gli altri codici sono `file_unreadable` e `file_not_text`.
 * **Nessun codice unsafe:** `#![forbid(unsafe_code)]` nella libreria e nel programma.
 * **Elenchi e progetti più sicuri:** il percorso di un livello non può essere `.`, un nome che Windows rifiuta (`CON`, `AUX`, `COM1`...) né finire con un punto o uno spazio, due livelli che differiscono solo per le maiuscole sono uno solo, l'elenco dei recenti conserva il percorso completo di un file esistente e due esecuzioni contemporanee (`recent`, `add-layer`) non perdono la modifica dell'altra perché il file è bloccato mentre cambia; un livello viene calcolato a blocchi di 64 KiB e un programma terminato da un segnale viene indicato come tale e non come un errore.
 
@@ -104,6 +105,7 @@ EH3D-SUITE-LAUNCHER/
 │   ├── gui_main.rs                              la finestra come programma a sé, senza console su Windows
 │   ├── lang.rs                                  le parole della finestra nelle otto lingue
 │   ├── launch.rs                                una parte della logica
+│   ├── limit.rs                                 file letti con limite di dimensione, un codice per rifiuto
 │   ├── lib.rs                                   la libreria: ciò che usa ogni comando
 │   ├── main.rs                                  la riga di comando
 │   ├── project.rs                               una parte della logica
@@ -114,6 +116,7 @@ EH3D-SUITE-LAUNCHER/
 │   └── window.rs                                lo stato della finestra senza schermo: programmi, progetti, file e avvio
 ├── tests/
 │   ├── launcher.rs                              test della libreria e della riga di comando
+│   ├── read_limit.rs                            test del limite di dimensione dei file letti
 │   └── shot_sample.rs                           test degli esempi nella finestra di un'immagine
 ├── examples/
 │   ├── workspace/                               manifesti di esempio di programmi della suite, da mostrare nella finestra di un'immagine
@@ -155,7 +158,7 @@ Per fare un'immagine della finestra senza aprirla a mano, eseguila con `--shot F
 
 ## 🧪 Test
 
-La suite ha 113 test (`cargo test`, eseguiti su Windows e Linux nella CI). Verificano i casi normali, i casi limite e gli input danneggiati: file vuoti, spazzatura e file tagliati non causano mai un panico. La CI esegue anche `cargo fmt --check`, `cargo clippy` (anche con `--features gui`) con gli avvisi come errori e `python -I tools/ci_validate.py`.
+La suite ha 119 test (`cargo test`, eseguiti su Windows e Linux nella CI). Verificano i casi normali, i casi limite e gli input danneggiati: file vuoti, spazzatura e file tagliati non causano mai un panico. La CI esegue anche `cargo fmt --check`, `cargo clippy` (anche con `--features gui`) con gli avvisi come errori e `python -I tools/ci_validate.py`.
 
 ## 🏗️ Compilazione e rilascio
 

@@ -9,7 +9,7 @@ use crate::launch::{
 };
 use crate::project::{self, Project};
 use crate::recent;
-use crate::registry::{discover, find_binary, is_known, Module};
+use crate::registry::{discover_with_limit, find_binary, is_known, Module};
 use crate::settings::Settings;
 use std::path::{Path, PathBuf};
 
@@ -318,12 +318,13 @@ impl Window {
                 )
             })
         } else {
-            self.recent = recent::load(&self.recent_path());
+            self.recent =
+                recent::load_with_limit(&self.recent_path(), self.settings.max_file_bytes());
             configured_workspace(&self.data_dir, self.lang.code())
         };
         match found {
             Ok(ws) => {
-                let (modules, problems) = discover(&ws);
+                let (modules, problems) = discover_with_limit(&ws, self.settings.max_file_bytes());
                 self.programs = modules
                     .into_iter()
                     .map(|module| Program {
@@ -447,7 +448,8 @@ impl Window {
         if self.ephemeral {
             recent::remember(&mut self.recent, &full);
         } else {
-            match recent::add(&self.recent_path(), &full) {
+            match recent::add_with_limit(&self.recent_path(), &full, self.settings.max_file_bytes())
+            {
                 Ok(list) => self.recent = list,
                 Err(e) => {
                     self.status = Status::Failed(e);

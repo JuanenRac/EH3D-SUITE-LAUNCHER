@@ -17,3 +17,6 @@ backoff_ms = 500
 # The size of the window when it opens, in pixels (640 to 7680 wide, 420 to 4320 high).
 window_width = 1100
 window_height = 700
+
+# The largest manifest (eh3d.project.json) or list of recent projects that is read, in MiB (1 to 1024); a bigger file is refused with the code file_too_large.
+max_file_mib = 16

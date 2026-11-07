@@ -93,6 +93,19 @@
           }
         },
         {
+          "name": "limit.rs",
+          "desc": {
+            "en": "files read with a size limit and a code for each refusal",
+            "es": "ficheros leídos con límite de tamaño y un código por rechazo",
+            "de": "Dateien mit Größenlimit lesen, ein Code je Ablehnung",
+            "fr": "fichiers lus avec limite de taille, un code par refus",
+            "it": "file letti con limite di dimensione, un codice per rifiuto",
+            "ja": "サイズ上限付きの読み込みと拒否ごとのコード",
+            "zh": "带大小上限的读取，每种拒绝都有代码",
+            "pt": "ficheiros lidos com limite de tamanho, um código por recusa"
+          }
+        },
+        {
           "name": "lib.rs",
           "desc": {
             "en": "the library: what every command uses",
@@ -214,6 +227,19 @@
             "ja": "ライブラリとコマンドラインのテスト",
             "zh": "库和命令行的测试",
             "pt": "testes da biblioteca e da linha de comandos"
+          }
+        },
+        {
+          "name": "read_limit.rs",
+          "desc": {
+            "en": "tests of the size limit of the files that are read",
+            "es": "pruebas del límite de tamaño de los ficheros que se leen",
+            "de": "Tests des Größenlimits der gelesenen Dateien",
+            "fr": "tests de la limite de taille des fichiers lus",
+            "it": "test del limite di dimensione dei file letti",
+            "ja": "読み込むファイルのサイズ上限のテスト",
+            "zh": "所读文件大小上限的测试",
+            "pt": "testes do limite de tamanho dos ficheiros lidos"
           }
         },
         {

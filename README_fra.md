@@ -18,7 +18,7 @@
 
 ---
 
-**Vérification d'honnêteté - ce qui fonctionne aujourd'hui :** une bibliothèque Rust et un programme en ligne de commande (`eh3d-launcher`) avec 113 tests exécutés sur un ordinateur : trouve les programmes de la suite par leurs manifestes, les lance et les relance en cas d'échec, garde les projets récents et écrit et vérifie le fichier de projet avec le SHA-256 de chaque fichier. Une fenêtre (`eh3d-launcher-gui`, compilée avec la fonctionnalité `gui`) est écrite et sa logique est testée, mais elle n'a été ni compilée ni regardée sur un écran ; rien n'a été essayé sur une machine et rien n'a été vérifié sur une collection de fichiers réels.
+**Vérification d'honnêteté - ce qui fonctionne aujourd'hui :** une bibliothèque Rust et un programme en ligne de commande (`eh3d-launcher`) avec 119 tests exécutés sur un ordinateur : trouve les programmes de la suite par leurs manifestes, les lance et les relance en cas d'échec, garde les projets récents et écrit et vérifie le fichier de projet avec le SHA-256 de chaque fichier. Une fenêtre (`eh3d-launcher-gui`, compilée avec la fonctionnalité `gui`) est écrite et sa logique est testée, mais elle n'a été ni compilée ni regardée sur un écran ; rien n'a été essayé sur une machine et rien n'a été vérifié sur une collection de fichiers réels.
 
 ---
 
@@ -31,7 +31,7 @@
 |---|---|
 | Version | `0.0.5` |
 | Maturité | Échafaudage |
-| Tests | 113 |
+| Tests | 119 |
 | Pile technique | Rust |
 | Sur du matériel réel | Non essayé : rien ici n'a fonctionné sur une machine |
 
@@ -47,7 +47,7 @@ Chaque ligne est une partie de ce dépôt et le feu dit où elle en est aujourd'
 |---|---|---|
 | Cœur | 🟡 | trouve les programmes de la suite par leurs manifestes, les lance et les relance en cas d'échec, garde les projets récents et écrit et vérifie le fichier de projet avec le SHA-256 de chaque fichier ; testé sur un ordinateur avec des entrées normales et abîmées, pas avec une collection de fichiers réels. |
 | Ligne de commande | 🟡 | `eh3d-launcher` exécute les mêmes fonctions que la bibliothèque et affiche le résultat ; chaque erreur revient sous forme de message et de code de sortie non nul. |
-| Tests | 🟡 | 113 tests passent (`cargo test`), avec des cas normaux, des cas limites et des entrées abîmées. |
+| Tests | 🟡 | 119 tests passent (`cargo test`), avec des cas normaux, des cas limites et des entrées abîmées. |
 | Sécurité | 🟡 | Rust sûr et simple (`forbid(unsafe_code)`) : rien ne panique sur les fichiers reçus et une mauvaise valeur est une erreur avec sa raison ; pas de revue indépendante. |
 | Fenêtre | 🟠 | Écrite (egui, `--features gui`, programme `eh3d-launcher-gui`) : les projets récents, ouvrir ou créer un projet, ajouter et retirer ses fichiers avec les vérifications de la ligne de commande, et les programmes de la suite avec un bouton pour lancer chacun ; sa logique est testée, mais elle n'a pas encore été compilée ni regardée sur un écran. |
 | Matériel réel | 🔴 | Non essayé : rien ici n'a été exécuté sur une machine. |
@@ -79,6 +79,7 @@ Comment les parties de ce dépôt s'articulent : qui l'utilise, ce qu'il contien
 * **Une bibliothèque et une ligne de commande :** chaque commande de `eh3d-launcher` est une fonction de la bibliothèque ; un autre programme de la suite peut l'appeler sans lancer de processus.
 * **Tests avec entrées abîmées :** les tests fournissent aussi des fichiers vides, du bruit, des nombres énormes et des fichiers coupés, et aucun ne doit paniquer.
 * **Sans deviner :** une valeur absurde est une erreur qui dit laquelle et pourquoi, jamais un résultat qui n'en a que l'air.
+* **Limite de taille des fichiers lus :** les manifestes des dépôts et la liste des projets récents ne sont lus que s'ils ne dépassent pas `max_file_mib` de `launcher.cfg` (16 Mio par défaut, de 1 à 1024), en ligne de commande et dans la fenêtre, et `launcher.cfg` lui-même jusqu'à 1 Mio ; un manifeste trop gros est ignoré avec le code `file_too_large` et son nom comme tout manifeste abîmé, `eh3d-launcher recent` se termine avec ce code pour une liste trop grosse et la fenêtre démarre avec une liste vide. Les autres codes sont `file_unreadable` et `file_not_text`.
 * **Pas de code unsafe :** `#![forbid(unsafe_code)]` dans la bibliothèque et le programme.
 * **Des listes et des projets plus sûrs :** le chemin d'une couche ne peut pas être `.`, un nom que Windows refuse (`CON`, `AUX`, `COM1`...) ni finir par un point ou une espace, deux couches qui ne diffèrent que par la casse n'en font qu'une, la liste des récents garde le chemin complet d'un fichier existant et deux exécutions simultanées (`recent`, `add-layer`) ne perdent pas la modification de l'autre car le fichier est verrouillé pendant qu'il change ; une couche est hachée par blocs de 64 Kio, et un programme arrêté par un signal est signalé comme tel et non comme un échec.
 
@@ -104,6 +105,7 @@ EH3D-SUITE-LAUNCHER/
 │   ├── gui_main.rs                              la fenêtre comme programme à part, sans console sous Windows
 │   ├── lang.rs                                  les mots de la fenêtre dans les huit langues
 │   ├── launch.rs                                une partie de la logique
+│   ├── limit.rs                                 fichiers lus avec limite de taille, un code par refus
 │   ├── lib.rs                                   la bibliothèque : ce que chaque commande utilise
 │   ├── main.rs                                  la ligne de commande
 │   ├── project.rs                               une partie de la logique
@@ -114,6 +116,7 @@ EH3D-SUITE-LAUNCHER/
 │   └── window.rs                                l'état de la fenêtre sans écran : programmes, projets, fichiers et lancement
 ├── tests/
 │   ├── launcher.rs                              tests de la bibliothèque et de la ligne de commande
+│   ├── read_limit.rs                            tests de la limite de taille des fichiers lus
 │   └── shot_sample.rs                           tests des exemples dans la fenêtre d'une capture
 ├── examples/
 │   ├── workspace/                               manifestes d'exemple de programmes de la suite, à afficher dans la fenêtre d'une capture
@@ -155,7 +158,7 @@ Pour prendre une capture de la fenêtre sans l'ouvrir à la main, lancez-la avec
 
 ## 🧪 Tests
 
-La suite compte 113 tests (`cargo test`, exécutés sous Windows et Linux dans le CI). Ils vérifient les cas normaux, les cas limites et les entrées abîmées : fichiers vides, bruit et fichiers coupés ne font jamais paniquer. Le CI exécute aussi `cargo fmt --check`, `cargo clippy` (aussi avec `--features gui`) avec les avertissements comme erreurs et `python -I tools/ci_validate.py`.
+La suite compte 119 tests (`cargo test`, exécutés sous Windows et Linux dans le CI). Ils vérifient les cas normaux, les cas limites et les entrées abîmées : fichiers vides, bruit et fichiers coupés ne font jamais paniquer. Le CI exécute aussi `cargo fmt --check`, `cargo clippy` (aussi avec `--features gui`) avec les avertissements comme erreurs et `python -I tools/ci_validate.py`.
 
 ## 🏗️ Compilation et publication
 

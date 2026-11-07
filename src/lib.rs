@@ -8,6 +8,7 @@ pub mod browse;
 pub mod gui;
 pub mod lang;
 pub mod launch;
+pub mod limit;
 pub mod project;
 pub mod recent;
 pub mod registry;

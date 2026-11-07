@@ -4,6 +4,7 @@
 
 use crate::lang::Lang;
 use crate::launch::{Policy, CONFIG_FILE};
+use crate::limit::{self, DEFAULT_MAX_FILE_MIB, MAX_CONFIG_BYTES};
 use std::path::Path;
 
 /// The values used when the file does not say otherwise.
@@ -16,6 +17,7 @@ pub const MAX_RESTARTS_LIMIT: u32 = 10;
 pub const MAX_BACKOFF_MS: u64 = 30_000;
 pub const MIN_WINDOW: (u32, u32) = (640, 420);
 pub const MAX_WINDOW: (u32, u32) = (7680, 4320);
+pub const MAX_FILE_MIB_LIMITS: (u64, u64) = (1, 1024);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Settings {
@@ -25,6 +27,8 @@ pub struct Settings {
     pub backoff_ms: u64,
     pub window_width: u32,
     pub window_height: u32,
+    /// The largest manifest or list of recent projects that is read, in MiB; a bigger one is refused with the code `file_too_large`.
+    pub max_file_mib: u64,
 }
 
 impl Default for Settings {
@@ -35,6 +39,7 @@ impl Default for Settings {
             backoff_ms: DEFAULT_BACKOFF_MS,
             window_width: DEFAULT_WINDOW_WIDTH,
             window_height: DEFAULT_WINDOW_HEIGHT,
+            max_file_mib: DEFAULT_MAX_FILE_MIB,
         }
     }
 }
@@ -99,6 +104,15 @@ impl Settings {
                 "window_height" => {
                     s.window_height = number(line, key, value, MIN_WINDOW.1, MAX_WINDOW.1)?;
                 }
+                "max_file_mib" => {
+                    s.max_file_mib = number(
+                        line,
+                        key,
+                        value,
+                        MAX_FILE_MIB_LIMITS.0,
+                        MAX_FILE_MIB_LIMITS.1,
+                    )?;
+                }
                 _ => {}
             }
         }
@@ -108,11 +122,15 @@ impl Settings {
     /// Reads `launcher.cfg` in `dir`; a file that is not there means the defaults.
     pub fn load(dir: &Path) -> Result<Settings, String> {
         let file = dir.join(CONFIG_FILE);
-        match std::fs::read_to_string(&file) {
-            Ok(text) => Settings::parse(&text),
-            Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(Settings::default()),
-            Err(e) => Err(format!("{}: {e}", file.display())),
+        if !file.exists() {
+            return Ok(Settings::default());
         }
+        Settings::parse(&limit::read_text_limited(&file, MAX_CONFIG_BYTES)?)
+    }
+
+    /// The size limit of the files that are read, in bytes.
+    pub fn max_file_bytes(&self) -> u64 {
+        limit::mib(self.max_file_mib)
     }
 
     /// How a failed program is started again.
