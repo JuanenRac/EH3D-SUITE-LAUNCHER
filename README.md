@@ -18,7 +18,7 @@
 
 ---
 
-**Honesty check - what actually runs today:** a Rust library and a command line program (`eh3d-launcher`) with 100 tests that run on a computer: finds the programs of the suite by their manifests, starts them and starts them again when they fail, keeps the recent projects and writes and checks the project file with the SHA-256 of every file. A window (`eh3d-launcher-gui`, built with the `gui` feature) is written and its logic is tested, but it has not been built or looked at on a screen; nothing has been tried on a machine and nothing has been checked against a collection of real files.
+**Honesty check - what actually runs today:** a Rust library and a command line program (`eh3d-launcher`) with 119 tests that run on a computer: finds the programs of the suite by their manifests, starts them and starts them again when they fail, keeps the recent projects and writes and checks the project file with the SHA-256 of every file. A window (`eh3d-launcher-gui`, built with the `gui` feature) is written and its logic is tested, but it has not been built or looked at on a screen; nothing has been tried on a machine and nothing has been checked against a collection of real files.
 
 ---
 
@@ -31,7 +31,7 @@
 |---|---|
 | Version | `0.0.5` |
 | Maturity | Scaffolding |
-| Tests | 100 |
+| Tests | 119 |
 | Stack | Rust |
 | On real hardware | Not tried: nothing here has run on a machine |
 
@@ -47,7 +47,7 @@ Each line is one part of this repository and the light says how far it is today.
 |---|---|---|
 | Core | 🟡 | finds the programs of the suite by their manifests, starts them and starts them again when they fail, keeps the recent projects and writes and checks the project file with the SHA-256 of every file; tested on a computer with normal and damaged input, not with a collection of real files. |
 | Command line | 🟡 | `eh3d-launcher` runs the same functions as the library and prints the result; every error comes back as a message and a non-zero exit code. |
-| Tests | 🟡 | 100 tests pass (`cargo test`), with normal cases, edge cases and damaged input. |
+| Tests | 🟡 | 119 tests pass (`cargo test`), with normal cases, edge cases and damaged input. |
 | Security | 🟡 | Plain safe Rust (`forbid(unsafe_code)`): nothing panics on the files it is given and a bad value is an error with its reason; no independent review. |
 | Window | 🟠 | Written (egui, `--features gui`, program `eh3d-launcher-gui`): the recent projects, open or create a project, add and remove its files with the checks of the command line, and the programs of the suite with a button to start each one; its logic is tested, but it has not been built or looked at on a screen yet. |
 | Real hardware | 🔴 | Not tried: nothing here has been run on a machine. |
@@ -79,6 +79,7 @@ How the parts of this repository fit together: who uses it, what it holds and wh
 * **A library and a command line:** every command of `eh3d-launcher` is a function of the library, so another program of the suite can call it without starting a process.
 * **Tests with damaged input:** the tests also feed empty files, garbage, huge numbers and cut files, and none of them may panic.
 * **No guessing:** a value that does not make sense is an error that says which value and why, never a result that only looks right.
+* **Size limit on the files it reads:** the manifests of the repositories and the list of recent projects are read only when they are not larger than `max_file_mib` of `launcher.cfg` (16 MiB by default, 1 to 1024), in the command line and in the window, and `launcher.cfg` itself up to 1 MiB; a manifest that is too big is skipped with the code `file_too_large` and its name like any other damaged manifest, `eh3d-launcher recent` ends with that code for a list that is too big, and the window starts with an empty list. The other codes are `file_unreadable` and `file_not_text`.
 * **No unsafe code:** `#![forbid(unsafe_code)]` in the library and the program.
 * **Safer lists and projects:** a layer path may not be `.`, a name that Windows refuses (`CON`, `AUX`, `COM1`...) or end in a dot or a space, two layers that differ only in case are one, the recent list keeps the full path of an existing file and two runs at the same time (`recent`, `add-layer`) do not lose each other's change because the file is locked while it is changed, a layer is hashed in blocks of 64 KiB, and a program ended by a signal is told as such and not as a failure.
 
@@ -104,15 +105,22 @@ EH3D-SUITE-LAUNCHER/
 │   ├── gui_main.rs                              the window as a program of its own, without a console on Windows
 │   ├── lang.rs                                  the words of the window in the eight languages
 │   ├── launch.rs                                a part of the logic
+│   ├── limit.rs                                 files read with a size limit and a code for each refusal
 │   ├── lib.rs                                   the library: what every command uses
 │   ├── main.rs                                  the command line
 │   ├── project.rs                               a part of the logic
 │   ├── recent.rs                                a part of the logic
 │   ├── registry.rs                              a part of the logic
 │   ├── settings.rs                              the settings of launcher.cfg: language, restarts and window size
+│   ├── shot.rs                                  the picture mode of the window (--shot): its arguments, read and checked without a screen
 │   └── window.rs                                the state of the window, no screen needed: programs, projects, files and launching
 ├── tests/
-│   └── launcher.rs                              tests of the library and the command line
+│   ├── launcher.rs                              tests of the library and the command line
+│   ├── read_limit.rs                            tests of the size limit of the files that are read
+│   └── shot_sample.rs                           tests of the samples in the window of a picture
+├── examples/
+│   ├── workspace/                               sample manifests of programs of the suite, to show in the window of a picture
+│   └── demo/                                    a sample project list with three files and their checksums
 ├── docs/
 │   ├── architecture.json                        data of the Architecture picture
 │   └── structure.json                           data of the Repository Structure picture
@@ -143,11 +151,14 @@ cargo run --release -- list --workspace ..
 # the window (needs the gui feature)
 cargo build --release --features gui
 cargo run --release --features gui --bin eh3d-launcher-gui
+cargo run --release --features gui --bin eh3d-launcher-gui -- --shot screen.png --open examples/workspace --open examples/demo/demo.eh3dlist   # a picture of the window
 ```
+
+To take a picture of the window without opening it by hand, run it with `--shot FILE.png` (also `--size WxH`, `--theme forge|dark|light`, `--wait N`, `--lang CODE`, `--open FILE`, `--replace`): it opens at that size, saves the PNG, keeps no settings and closes by itself (exit code 0 when the file was written, 1 when it was not, 2 for wrong arguments).
 
 ## 🧪 Testing
 
-The suite has 100 tests (`cargo test`, run on Windows and Linux in the CI). They check the normal cases, the edge cases and damaged input: empty files, garbage and cut files never panic. The CI also runs `cargo fmt --check`, `cargo clippy` (also with `--features gui`) with warnings as errors and `python -I tools/ci_validate.py`.
+The suite has 119 tests (`cargo test`, run on Windows and Linux in the CI). They check the normal cases, the edge cases and damaged input: empty files, garbage and cut files never panic. The CI also runs `cargo fmt --check`, `cargo clippy` (also with `--features gui`) with warnings as errors and `python -I tools/ci_validate.py`.
 
 ## 🏗️ Build & Release
 
@@ -180,9 +191,14 @@ EH3D-SUITE-LAUNCHER/
 │   ├── recent.rs                                a part of the logic
 │   ├── registry.rs                              a part of the logic
 │   ├── settings.rs                              the settings of launcher.cfg: language, restarts and window size
+│   ├── shot.rs                                  the picture mode of the window (--shot): its arguments, read and checked without a screen
 │   └── window.rs                                the state of the window, no screen needed: programs, projects, files and launching
 ├── tests/
-│   └── launcher.rs                              tests of the library and the command line
+│   ├── launcher.rs                              tests of the library and the command line
+│   └── shot_sample.rs                           tests of the samples in the window of a picture
+├── examples/
+│   ├── workspace/                               sample manifests of programs of the suite, to show in the window of a picture
+│   └── demo/                                    a sample project list with three files and their checksums
 ├── docs/
 │   ├── architecture.json                        data of the Architecture picture
 │   └── structure.json                           data of the Repository Structure picture

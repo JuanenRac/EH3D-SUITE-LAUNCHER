@@ -18,7 +18,7 @@
 
 ---
 
-**Ehrlichkeitscheck - was heute wirklich läuft:** eine Rust-Bibliothek und ein Kommandozeilenprogramm (`eh3d-launcher`) mit 100 Tests, die auf einem Computer laufen: findet die Programme der Suite über ihre Manifeste, startet sie und startet sie bei Fehlern neu, führt die zuletzt verwendeten Projekte und schreibt und prüft die Projektdatei mit dem SHA-256 jeder Datei. Ein Fenster (`eh3d-launcher-gui`, mit dem Feature `gui` gebaut) ist geschrieben und seine Logik getestet, aber es wurde weder gebaut noch auf einem Bildschirm angesehen; nichts wurde an einer Maschine ausprobiert und nichts an einer Sammlung echter Dateien geprüft.
+**Ehrlichkeitscheck - was heute wirklich läuft:** eine Rust-Bibliothek und ein Kommandozeilenprogramm (`eh3d-launcher`) mit 119 Tests, die auf einem Computer laufen: findet die Programme der Suite über ihre Manifeste, startet sie und startet sie bei Fehlern neu, führt die zuletzt verwendeten Projekte und schreibt und prüft die Projektdatei mit dem SHA-256 jeder Datei. Ein Fenster (`eh3d-launcher-gui`, mit dem Feature `gui` gebaut) ist geschrieben und seine Logik getestet, aber es wurde weder gebaut noch auf einem Bildschirm angesehen; nichts wurde an einer Maschine ausprobiert und nichts an einer Sammlung echter Dateien geprüft.
 
 ---
 
@@ -31,7 +31,7 @@
 |---|---|
 | Version | `0.0.5` |
 | Reifegrad | Gerüst |
-| Tests | 100 |
+| Tests | 119 |
 | Technologie-Stack | Rust |
 | Auf echter Hardware | Nicht erprobt: nichts davon lief an einer Maschine |
 
@@ -47,7 +47,7 @@ Jede Zeile ist ein Teil dieses Repositorys, und die Ampel sagt, wie weit er heut
 |---|---|---|
 | Kern | 🟡 | findet die Programme der Suite über ihre Manifeste, startet sie und startet sie bei Fehlern neu, führt die zuletzt verwendeten Projekte und schreibt und prüft die Projektdatei mit dem SHA-256 jeder Datei; am Computer mit normalen und beschädigten Eingaben getestet, nicht mit einer Sammlung echter Dateien. |
 | Kommandozeile | 🟡 | `eh3d-launcher` führt dieselben Funktionen wie die Bibliothek aus und gibt das Ergebnis aus; jeder Fehler kommt als Meldung mit einem Exit-Code ungleich null zurück. |
-| Tests | 🟡 | 100 Tests bestehen (`cargo test`), mit Normalfällen, Grenzfällen und beschädigten Eingaben. |
+| Tests | 🟡 | 119 Tests bestehen (`cargo test`), mit Normalfällen, Grenzfällen und beschädigten Eingaben. |
 | Sicherheit | 🟡 | Reines sicheres Rust (`forbid(unsafe_code)`): nichts gerät bei den übergebenen Dateien in Panik und ein schlechter Wert ist ein Fehler mit Begründung; keine unabhängige Prüfung. |
 | Fenster | 🟠 | Geschrieben (egui, `--features gui`, Programm `eh3d-launcher-gui`): die letzten Projekte, Projekt öffnen oder anlegen, seine Dateien mit den Prüfungen der Kommandozeile hinzufügen und entfernen, und die Programme der Suite mit einer Schaltfläche zum Starten jedes Programms; seine Logik ist getestet, aber es wurde noch nicht gebaut oder auf einem Bildschirm angesehen. |
 | Echte Hardware | 🔴 | Nicht erprobt: nichts davon wurde an einer Maschine ausgeführt. |
@@ -79,6 +79,7 @@ Wie die Teile dieses Repositorys zusammenpassen: wer es nutzt, was es enthält u
 * **Bibliothek und Kommandozeile:** Jeder Befehl von `eh3d-launcher` ist eine Funktion der Bibliothek, sodass ein anderes Programm der Suite ihn ohne Prozessstart aufrufen kann.
 * **Tests mit beschädigten Eingaben:** Die Tests füttern auch leere Dateien, Datenmüll, riesige Zahlen und abgeschnittene Dateien; keiner darf in Panik geraten.
 * **Kein Raten:** Ein unsinniger Wert ist ein Fehler, der sagt welcher und warum, nie ein Ergebnis, das nur richtig aussieht.
+* **Größenlimit für gelesene Dateien:** Die Manifeste der Repositories und die Liste der letzten Projekte werden in der Kommandozeile und im Fenster nur gelesen, wenn sie nicht größer sind als `max_file_mib` in `launcher.cfg` (standardmäßig 16 MiB, 1 bis 1024), `launcher.cfg` selbst bis 1 MiB; ein zu großes Manifest wird wie jedes beschädigte Manifest mit dem Code `file_too_large` und seinem Namen übersprungen, `eh3d-launcher recent` endet bei einer zu großen Liste mit diesem Code und das Fenster startet mit leerer Liste. Die anderen Codes sind `file_unreadable` und `file_not_text`.
 * **Kein unsafe-Code:** `#![forbid(unsafe_code)]` in Bibliothek und Programm.
 * **Sicherere Listen und Projekte:** ein Ebenenpfad darf nicht `.` sein, kein von Windows abgelehnter Name (`CON`, `AUX`, `COM1` ...) und nicht auf Punkt oder Leerzeichen enden, zwei Ebenen, die sich nur in der Groß-/Kleinschreibung unterscheiden, sind eine, die Liste der zuletzt verwendeten Projekte behält den vollständigen Pfad einer vorhandenen Datei, und zwei gleichzeitige Läufe (`recent`, `add-layer`) verlieren die Änderung des anderen nicht, weil die Datei während der Änderung gesperrt ist; eine Ebene wird in Blöcken zu 64 KiB gehasht, und ein durch ein Signal beendetes Programm wird als solches gemeldet und nicht als Fehler.
 
@@ -104,15 +105,22 @@ EH3D-SUITE-LAUNCHER/
 │   ├── gui_main.rs                              das Fenster als eigenes Programm, unter Windows ohne Konsole
 │   ├── lang.rs                                  die Wörter des Fensters in den acht Sprachen
 │   ├── launch.rs                                ein Teil der Logik
+│   ├── limit.rs                                 Dateien mit Größenlimit lesen, ein Code je Ablehnung
 │   ├── lib.rs                                   die Bibliothek: was jeder Befehl nutzt
 │   ├── main.rs                                  die Kommandozeile
 │   ├── project.rs                               ein Teil der Logik
 │   ├── recent.rs                                ein Teil der Logik
 │   ├── registry.rs                              ein Teil der Logik
 │   ├── settings.rs                              die Einstellungen aus launcher.cfg: Sprache, Neustarts und Fenstergröße
+│   ├── shot.rs                                  der Bildmodus des Fensters (--shot): seine Argumente, ohne Bildschirm gelesen und geprüft
 │   └── window.rs                                der Zustand des Fensters ohne Bildschirm: Programme, Projekte, Dateien und Start
 ├── tests/
-│   └── launcher.rs                              Tests von Bibliothek und Kommandozeile
+│   ├── launcher.rs                              Tests von Bibliothek und Kommandozeile
+│   ├── read_limit.rs                            Tests des Größenlimits der gelesenen Dateien
+│   └── shot_sample.rs                           Tests der Beispiele im Fenster eines Bildes
+├── examples/
+│   ├── workspace/                               Beispiel-Manifeste von Programmen der Suite, für das Fenster eines Bildes
+│   └── demo/                                    eine Beispiel-Projektliste mit drei Dateien und ihren Prüfsummen
 ├── docs/
 │   ├── architecture.json                        Daten des Architektur-Bildes
 │   └── structure.json                           Daten des Struktur-Bildes
@@ -143,11 +151,14 @@ cargo run --release -- list --workspace ..
 # das Fenster (braucht das Feature gui)
 cargo build --release --features gui
 cargo run --release --features gui --bin eh3d-launcher-gui
+cargo run --release --features gui --bin eh3d-launcher-gui -- --shot screen.png --open examples/workspace --open examples/demo/demo.eh3dlist   # a picture of the window
 ```
+
+Um ein Bild des Fensters aufzunehmen, ohne es von Hand zu öffnen, starten Sie es mit `--shot DATEI.png` (auch `--size WxH`, `--theme forge|dark|light`, `--wait N`, `--lang CODE`, `--open FILE`, `--replace`): Es öffnet sich in dieser Größe, speichert das PNG, behält keine Einstellungen und schließt sich selbst (Exit-Code 0, wenn die Datei geschrieben wurde, 1, wenn nicht, 2 bei falschen Argumenten).
 
 ## 🧪 Tests
 
-Die Suite hat 100 Tests (`cargo test`, in der CI unter Windows und Linux). Sie prüfen Normalfälle, Grenzfälle und beschädigte Eingaben: leere Dateien, Datenmüll und abgeschnittene Dateien lösen nie eine Panik aus. Die CI führt außerdem `cargo fmt --check`, `cargo clippy` (auch mit `--features gui`) mit Warnungen als Fehlern und `python -I tools/ci_validate.py` aus.
+Die Suite hat 119 Tests (`cargo test`, in der CI unter Windows und Linux). Sie prüfen Normalfälle, Grenzfälle und beschädigte Eingaben: leere Dateien, Datenmüll und abgeschnittene Dateien lösen nie eine Panik aus. Die CI führt außerdem `cargo fmt --check`, `cargo clippy` (auch mit `--features gui`) mit Warnungen als Fehlern und `python -I tools/ci_validate.py` aus.
 
 ## 🏗️ Build und Veröffentlichung
 
@@ -180,9 +191,14 @@ EH3D-SUITE-LAUNCHER/
 │   ├── recent.rs                                ein Teil der Logik
 │   ├── registry.rs                              ein Teil der Logik
 │   ├── settings.rs                              die Einstellungen aus launcher.cfg: Sprache, Neustarts und Fenstergröße
+│   ├── shot.rs                                  der Bildmodus des Fensters (--shot): seine Argumente, ohne Bildschirm gelesen und geprüft
 │   └── window.rs                                der Zustand des Fensters ohne Bildschirm: Programme, Projekte, Dateien und Start
 ├── tests/
-│   └── launcher.rs                              Tests von Bibliothek und Kommandozeile
+│   ├── launcher.rs                              Tests von Bibliothek und Kommandozeile
+│   └── shot_sample.rs                           Tests der Beispiele im Fenster eines Bildes
+├── examples/
+│   ├── workspace/                               Beispiel-Manifeste von Programmen der Suite, für das Fenster eines Bildes
+│   └── demo/                                    eine Beispiel-Projektliste mit drei Dateien und ihren Prüfsummen
 ├── docs/
 │   ├── architecture.json                        Daten des Architektur-Bildes
 │   └── structure.json                           Daten des Struktur-Bildes

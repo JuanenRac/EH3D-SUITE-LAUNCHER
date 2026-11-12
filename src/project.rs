@@ -147,7 +147,13 @@ pub fn with_lock<T>(file: &Path, work: impl FnOnce() -> T) -> Result<T, String> 
             .open(&lock)
         {
             Ok(_) => break,
-            Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => {
+            // on Windows a lock that another run is removing at that moment answers "access denied" instead of "exists": it is tried again
+            Err(e)
+                if matches!(
+                    e.kind(),
+                    std::io::ErrorKind::AlreadyExists | std::io::ErrorKind::PermissionDenied
+                ) =>
+            {
                 let stale = fs::metadata(&lock)
                     .and_then(|m| m.modified())
                     .ok()

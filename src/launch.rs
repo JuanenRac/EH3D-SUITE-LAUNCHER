@@ -132,7 +132,8 @@ pub const CONFIG_FILE: &str = "launcher.cfg";
 pub fn configured_workspace(dir: &Path, lang: &str) -> Result<PathBuf, String> {
     let file = dir.join(CONFIG_FILE);
     let refused = || message(Msg::NoWorkspace, lang, &file.display().to_string());
-    let text = std::fs::read_to_string(&file).map_err(|_| refused())?;
+    let text = crate::limit::read_text_limited(&file, crate::limit::MAX_CONFIG_BYTES)
+        .map_err(|_| refused())?;
     for line in text.trim_start_matches('\u{feff}').lines() {
         let line = line.trim();
         if line.starts_with('#') {

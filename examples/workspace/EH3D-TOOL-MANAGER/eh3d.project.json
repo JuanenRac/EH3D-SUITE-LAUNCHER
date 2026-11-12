@@ -1,0 +1,9 @@
+{
+  "schema_version": "1.0",
+  "ecosystem": "EH3D",
+  "name": "EH3D-TOOL-MANAGER",
+  "version": "0.0.6",
+  "role": "tool",
+  "deployment_target": "user-pc",
+  "maturity": "functional"
+}

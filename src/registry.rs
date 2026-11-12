@@ -1,5 +1,6 @@
 //! The programs of the suite: each repository says what it is in its `eh3d.project.json`, so nothing here is a fixed list of names.
 
+use crate::limit;
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -75,10 +76,15 @@ pub fn program_name(repo: &str) -> String {
         .to_ascii_lowercase()
 }
 
-/// Reads the manifest of one repository. Anything that is not an EH3D manifest is an error that says why.
+/// Reads the manifest of one repository, with the size limit that `launcher.cfg` has by default.
 pub fn read_manifest(dir: &Path) -> Result<Module, String> {
+    read_manifest_with_limit(dir, limit::mib(limit::DEFAULT_MAX_FILE_MIB))
+}
+
+/// Reads the manifest of one repository when it is not larger than `max_bytes`. Anything that is not an EH3D manifest is an error that says why.
+pub fn read_manifest_with_limit(dir: &Path, max_bytes: u64) -> Result<Module, String> {
     let file = dir.join("eh3d.project.json");
-    let text = fs::read_to_string(&file).map_err(|e| format!("{}: {e}", file.display()))?;
+    let text = limit::read_text_limited(&file, max_bytes)?;
     // a manifest saved with a byte order mark is still a manifest
     let text = text.trim_start_matches('\u{feff}').to_string();
     let json: serde_json::Value =
@@ -121,6 +127,11 @@ pub fn read_manifest(dir: &Path) -> Result<Module, String> {
 
 /// Every EH3D repository that is a direct child of `workspace`, in alphabetical order, with the folders that could not be read as a list of reasons.
 pub fn discover(workspace: &Path) -> (Vec<Module>, Vec<String>) {
+    discover_with_limit(workspace, limit::mib(limit::DEFAULT_MAX_FILE_MIB))
+}
+
+/// `discover`, reading each manifest only when it is not larger than `max_bytes`.
+pub fn discover_with_limit(workspace: &Path, max_bytes: u64) -> (Vec<Module>, Vec<String>) {
     let mut modules = Vec::new();
     let mut problems = Vec::new();
     let Ok(entries) = fs::read_dir(workspace) else {
@@ -139,7 +150,7 @@ pub fn discover(workspace: &Path) -> (Vec<Module>, Vec<String>) {
         .collect();
     dirs.sort();
     for dir in dirs {
-        match read_manifest(&dir) {
+        match read_manifest_with_limit(&dir, max_bytes) {
             Ok(m) => modules.push(m),
             Err(e) => problems.push(e),
         }

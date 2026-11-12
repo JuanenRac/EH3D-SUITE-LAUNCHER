@@ -7,7 +7,7 @@ use eh3d_suite_launcher::launch::{
 };
 use eh3d_suite_launcher::project::Project;
 use eh3d_suite_launcher::recent;
-use eh3d_suite_launcher::registry::{discover, find_binary, find_module};
+use eh3d_suite_launcher::registry::{discover_with_limit, find_binary, find_module};
 use eh3d_suite_launcher::settings::Settings;
 use std::env;
 use std::path::{Path, PathBuf};
@@ -39,6 +39,11 @@ fn workspace(args: &mut Vec<String>) -> PathBuf {
         .unwrap_or_else(|| PathBuf::from(".."))
 }
 
+/// The size limit of the manifests and of the list of recent projects: `max_file_mib` of `launcher.cfg`.
+fn max_bytes() -> Result<u64, String> {
+    Ok(Settings::load(&data_dir())?.max_file_bytes())
+}
+
 fn run(mut args: Vec<String>) -> Result<(), String> {
     if args.is_empty() || matches!(args[0].as_str(), "help" | "--help" | "-h") {
         println!("{HELP}");
@@ -54,7 +59,7 @@ fn run(mut args: Vec<String>) -> Result<(), String> {
                 false
             };
             let ws = workspace(&mut args);
-            let (modules, problems) = discover(&ws);
+            let (modules, problems) = discover_with_limit(&ws, max_bytes()?);
             for m in modules.iter().filter(|m| all || m.is_desktop()) {
                 let built = if find_binary(m).is_some() {
                     "built"
@@ -90,7 +95,7 @@ fn run(mut args: Vec<String>) -> Result<(), String> {
             let name = args
                 .first()
                 .ok_or("launch needs the name of a program (see list)")?;
-            let (modules, _) = discover(&ws);
+            let (modules, _) = discover_with_limit(&ws, max_bytes()?);
             let module = find_module(&modules, name)
                 .ok_or_else(|| format!("{name}: no such program in {}", ws.display()))?;
             let bin = resolve(module, &ws, lang)?;
@@ -114,7 +119,7 @@ fn run(mut args: Vec<String>) -> Result<(), String> {
                 args.get(1).ok_or("new-project needs a name")?,
             );
             eh3d_suite_launcher::project::create_file(file, name)?;
-            recent::add(&data_dir().join("recent.txt"), file)?;
+            recent::add_with_limit(&data_dir().join("recent.txt"), file, max_bytes()?)?;
             println!("written {file}");
             Ok(())
         }
@@ -163,9 +168,9 @@ fn run(mut args: Vec<String>) -> Result<(), String> {
             let path = data_dir().join("recent.txt");
             let list = if args.first().map(String::as_str) == Some("add") {
                 let file = args.get(1).ok_or("recent add needs a file")?;
-                recent::add(&path, file)?
+                recent::add_with_limit(&path, file, max_bytes()?)?
             } else {
-                recent::load(&path)
+                recent::load_checked(&path, max_bytes()?)?
             };
             for e in &list {
                 println!("{e}");

@@ -18,7 +18,7 @@
 
 ---
 
-**诚实检查 - 当前真正能运行的内容：** 一个 Rust 库和一个命令行程序（`eh3d-launcher`），有 100 个在电脑上运行的测试：通过清单找到套件的程序，启动它们并在失败时重新启动，保存最近的项目，并用每个文件的 SHA-256 写入和校验项目文件。窗口（`eh3d-launcher-gui`，用 `gui` 特性构建）已编写，其逻辑已测试，但尚未构建，也没有在屏幕上看过；没有在机器上试过任何东西，也没有用大量真实文件验证过。
+**诚实检查 - 当前真正能运行的内容：** 一个 Rust 库和一个命令行程序（`eh3d-launcher`），有 119 个在电脑上运行的测试：通过清单找到套件的程序，启动它们并在失败时重新启动，保存最近的项目，并用每个文件的 SHA-256 写入和校验项目文件。窗口（`eh3d-launcher-gui`，用 `gui` 特性构建）已编写，其逻辑已测试，但尚未构建，也没有在屏幕上看过；没有在机器上试过任何东西，也没有用大量真实文件验证过。
 
 ---
 
@@ -31,7 +31,7 @@
 |---|---|
 | 版本 | `0.0.5` |
 | 成熟度 | 脚手架 |
-| 测试 | 100 |
+| 测试 | 119 |
 | 技术栈 | Rust |
 | 真实硬件 | 未试过：这里的任何内容都没有在机器上运行过 |
 
@@ -47,7 +47,7 @@
 |---|---|---|
 | 核心 | 🟡 | 通过清单找到套件的程序，启动它们并在失败时重新启动，保存最近的项目，并用每个文件的 SHA-256 写入和校验项目文件；已在电脑上用正常和损坏的输入测试，未用大量真实文件验证。 |
 | 命令行 | 🟡 | `eh3d-launcher` 运行与库相同的函数并打印结果；每个错误都以消息和非零退出码返回。 |
-| 测试 | 🟡 | 100 个测试通过（`cargo test`），包含正常情况、边界情况和损坏的输入。 |
+| 测试 | 🟡 | 119 个测试通过（`cargo test`），包含正常情况、边界情况和损坏的输入。 |
 | 安全 | 🟡 | 纯安全 Rust（`forbid(unsafe_code)`）：处理收到的文件时不会 panic，错误的值会返回带原因的错误；没有独立审查。 |
 | 窗口 | 🟠 | 已编写（egui，`--features gui`，程序 `eh3d-launcher-gui`）：最近的项目、打开或新建项目、用与命令行相同的检查添加和移除其文件，以及套件的程序（每个都有启动按钮）；其逻辑已测试，但尚未构建，也没有在屏幕上看过。 |
 | 真实硬件 | 🔴 | 未试过：这里的任何内容都没有在机器上运行过。 |
@@ -79,6 +79,7 @@ EH3D-SUITE-LAUNCHER 是 EH3D Fabrication Suite 的一个程序。它以库、命
 * **库加命令行：** `eh3d-launcher` 的每个命令都是库中的函数，套件中的其他程序无需启动进程即可调用。
 * **损坏输入的测试：** 测试还会输入空文件、乱码、巨大数字和被截断的文件，任何情况都不允许 panic。
 * **不猜测：** 没有意义的值是一个说明哪个值、为什么的错误，绝不是只是看起来正确的结果。
+* **读取文件的大小上限：** 仓库的清单和最近项目列表在命令行和窗口中，仅当不超过 `launcher.cfg` 中的 `max_file_mib`（默认 16 MiB，范围 1 到 1024）时才会读取，`launcher.cfg` 本身最多 1 MiB；过大的清单与其他损坏的清单一样，以代码 `file_too_large` 和名称被跳过，列表过大时 `eh3d-launcher recent` 以该代码结束，窗口以空列表启动。其他代码是 `file_unreadable` 和 `file_not_text`。
 * **没有 unsafe 代码：** 库和程序中都有 `#![forbid(unsafe_code)]`。
 * **更安全的列表和项目：** 图层路径不能是 `.`、Windows 不接受的名称（`CON`、`AUX`、`COM1` 等），也不能以点或空格结尾，仅大小写不同的两个图层视为同一个，最近列表保存现有文件的完整路径，同时运行的两个操作（`recent`、`add-layer`）不会丢失对方的修改，因为文件在修改期间被锁定；图层按 64 KiB 的块计算哈希，被信号终止的程序会如实说明而不是当作失败。
 
@@ -104,15 +105,22 @@ EH3D-SUITE-LAUNCHER/
 │   ├── gui_main.rs                              作为独立程序的窗口，在 Windows 上没有控制台
 │   ├── lang.rs                                  窗口的文字（八种语言）
 │   ├── launch.rs                                逻辑的一部分
+│   ├── limit.rs                                 带大小上限的读取，每种拒绝都有代码
 │   ├── lib.rs                                   库：每个命令所使用的部分
 │   ├── main.rs                                  命令行
 │   ├── project.rs                               逻辑的一部分
 │   ├── recent.rs                                逻辑的一部分
 │   ├── registry.rs                              逻辑的一部分
 │   ├── settings.rs                              launcher.cfg 的设置：语言、重启次数和窗口大小
+│   ├── shot.rs                                  窗口的截图模式（--shot）：无需屏幕即可读取和检查其参数
 │   └── window.rs                                无需屏幕的窗口状态：程序、项目、文件和启动
 ├── tests/
-│   └── launcher.rs                              库和命令行的测试
+│   ├── launcher.rs                              库和命令行的测试
+│   ├── read_limit.rs                            所读文件大小上限的测试
+│   └── shot_sample.rs                           截图窗口中示例的测试
+├── examples/
+│   ├── workspace/                               套件程序的示例清单，用于在截图窗口中显示
+│   └── demo/                                    包含三个文件及其校验和的示例项目列表
 ├── docs/
 │   ├── architecture.json                        架构图数据
 │   └── structure.json                           结构图数据
@@ -143,11 +151,14 @@ cargo run --release -- list --workspace ..
 # 窗口（需要 gui 特性）
 cargo build --release --features gui
 cargo run --release --features gui --bin eh3d-launcher-gui
+cargo run --release --features gui --bin eh3d-launcher-gui -- --shot screen.png --open examples/workspace --open examples/demo/demo.eh3dlist   # a picture of the window
 ```
+
+要在不手动打开窗口的情况下截取窗口图像，请使用 `--shot FILE.png` 运行（还可用 `--size WxH`, `--theme forge|dark|light`, `--wait N`, `--lang CODE`, `--open FILE`, `--replace`）：它按该尺寸打开，保存 PNG，不保留任何设置并自动关闭（写入文件成功时退出码为 0，否则为 1，参数错误时为 2）。
 
 ## 🧪 测试
 
-测试套件有 100 个测试（`cargo test`，CI 在 Windows 和 Linux 上运行）。它们检查正常情况、边界情况和损坏的输入：空文件、乱码和被截断的文件绝不会 panic。CI 还运行 `cargo fmt --check`、把警告当作错误的 `cargo clippy` （也包括 `--features gui`） 以及 `python -I tools/ci_validate.py`。
+测试套件有 119 个测试（`cargo test`，CI 在 Windows 和 Linux 上运行）。它们检查正常情况、边界情况和损坏的输入：空文件、乱码和被截断的文件绝不会 panic。CI 还运行 `cargo fmt --check`、把警告当作错误的 `cargo clippy` （也包括 `--features gui`） 以及 `python -I tools/ci_validate.py`。
 
 ## 🏗️ 构建与发布
 
@@ -180,9 +191,14 @@ EH3D-SUITE-LAUNCHER/
 │   ├── recent.rs                                逻辑的一部分
 │   ├── registry.rs                              逻辑的一部分
 │   ├── settings.rs                              launcher.cfg 的设置：语言、重启次数和窗口大小
+│   ├── shot.rs                                  窗口的截图模式（--shot）：无需屏幕即可读取和检查其参数
 │   └── window.rs                                无需屏幕的窗口状态：程序、项目、文件和启动
 ├── tests/
-│   └── launcher.rs                              库和命令行的测试
+│   ├── launcher.rs                              库和命令行的测试
+│   └── shot_sample.rs                           截图窗口中示例的测试
+├── examples/
+│   ├── workspace/                               套件程序的示例清单，用于在截图窗口中显示
+│   └── demo/                                    包含三个文件及其校验和的示例项目列表
 ├── docs/
 │   ├── architecture.json                        架构图数据
 │   └── structure.json                           结构图数据
