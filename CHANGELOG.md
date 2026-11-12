@@ -5,6 +5,7 @@ All notable changes to this project are documented here.
 ## [Unreleased]
 
 - Update the SHA-256 library to its newer version.
+- Update the PNG decoder that reads the window icon to its newer version.
 
 ## [0.0.5] - The window with recent projects, layers and the launcher of the suite programs
 
