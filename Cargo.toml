@@ -1,6 +1,6 @@
 [package]
 name = "eh3d-suite-launcher"
-version = "0.0.5"
+version = "0.0.6"
 edition = "2021"
 rust-version = "1.95"
 description = "The hub of the EH3D Fabrication Suite: finds the programs of the suite, starts them, keeps the recent projects and the project file"

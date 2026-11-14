@@ -4,6 +4,8 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+## [0.0.6] - Size-limited file reads and a picture mode for the window
+
 - **The shared validation tools are updated:** the validator also runs the workflow and lessons checks of the suite with their latest rules, including a check to run before every push.
 - **The CI validation checks the workflows and the lessons of past CI failures against a baseline:** `tools/workflow_hygiene.py` and `tools/lessons_lint.py` (copies of the shared tools) run in the validation, and only findings that are not in `tools/workflow_hygiene_baseline.json` and `tools/lessons_lint_baseline.json` fail it, so what exists today stays as it is and a new one is caught. `python tools/workflow_hygiene.py --root . --detail` and `python tools/lessons_lint.py --repo .` list the findings.
 - **The files it reads have a size limit:** the manifests of the repositories and the list of recent projects are read (command line and window) only when they are not larger than the new key `max_file_mib` of `launcher.cfg` (16 MiB by default, 1 to 1024, listed in `launcher.cfg.example`, which a test keeps equal to the defaults), and `launcher.cfg` itself up to 1 MiB, never reading more than one byte past the limit. A refusal starts with a code that does not change (`file_too_large`, `file_unreadable`, `file_not_text`) followed by the file name: a manifest that is too big is skipped like any damaged one, `eh3d-launcher recent` ends with the code, and the window starts with an empty list. New functions `registry::discover_with_limit`, `read_manifest_with_limit` and `recent::load_with_limit`, `load_checked`, `add_with_limit`; the old ones use the default limit. Tests in `tests/read_limit.rs`.
