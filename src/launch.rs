@@ -42,15 +42,31 @@ fn restarts_after(code: Option<i32>) -> bool {
 
 /// Runs `program` with `args` and waits. A run that crashed (a code other than 0, 1 and 2) is repeated up to `policy.max_restarts` times, with the waiting time doubling.
 pub fn supervise(program: &Path, args: &[String], policy: Policy) -> Result<Outcome, String> {
+    supervise_with(
+        policy,
+        || {
+            Command::new(program)
+                .args(args)
+                .status()
+                .map(|status| status.code())
+                .map_err(|e| format!("{}: {e}", program.display()))
+        },
+        |ms| sleep(Duration::from_millis(ms)),
+    )
+}
+
+/// The supervision with its two outside effects handed in: `run` starts the program once and waits for it (its exit code, `None` when a signal ended it, or the failure to
+/// start it) and `wait_ms` waits. [`supervise`] gives it the real ones; the simulation gives it a script and a clock that only writes the waits down.
+pub fn supervise_with(
+    policy: Policy,
+    mut run: impl FnMut() -> Result<Option<i32>, String>,
+    mut wait_ms: impl FnMut(u64),
+) -> Result<Outcome, String> {
     let mut runs = 0;
     let mut wait = policy.backoff_ms;
     loop {
         runs += 1;
-        let status = Command::new(program)
-            .args(args)
-            .status()
-            .map_err(|e| format!("{}: {e}", program.display()))?;
-        let code = status.code();
+        let code = run()?;
         if code == Some(0) {
             return Ok(Outcome {
                 runs,
@@ -68,7 +84,7 @@ pub fn supervise(program: &Path, args: &[String], policy: Policy) -> Result<Outc
                 signalled: code.is_none(),
             });
         }
-        sleep(Duration::from_millis(wait));
+        wait_ms(wait);
         wait = wait.saturating_mul(2).min(30_000);
     }
 }
@@ -198,4 +214,183 @@ pub fn resolve(module: &Module, workspace: &Path, lang: &str) -> Result<PathBuf,
         return Err(message(Msg::UnknownProgram, lang, &module.name));
     }
     Ok(bin)
+}
+
+/// The simulation of a program that crashes: the supervision runs against a script of runs (the exit code of each, a crash, a signal or a failure to start)
+/// and a clock that only writes down the waits, so the restarts, the doubling of the wait and the giving up can be tried with no process and no time.
+/// Nothing here has started a real program.
+pub mod sim {
+    use super::{supervise_with, Outcome, Policy};
+
+    /// One run of the simulated program: its exit code (`None`: ended by a signal) or the failure to start it.
+    pub type Run = Result<Option<i32>, String>;
+
+    /// A small deterministic generator (xorshift64*). It reads no clock.
+    #[derive(Debug, Clone)]
+    pub struct SimRng(u64);
+
+    impl SimRng {
+        /// A generator for the seed (zero is replaced, because xorshift cannot start from zero).
+        pub fn new(seed: u64) -> SimRng {
+            SimRng(if seed == 0 {
+                0x9E37_79B9_7F4A_7C15
+            } else {
+                seed
+            })
+        }
+
+        /// A number below `n` (`n` must be above zero).
+        pub fn below(&mut self, n: u64) -> u64 {
+            let mut x = self.0;
+            x ^= x >> 12;
+            x ^= x << 25;
+            x ^= x >> 27;
+            self.0 = x;
+            x.wrapping_mul(0x2545_F491_4F6C_DD1D) % n
+        }
+    }
+
+    /// A script of `runs` runs in which each one crashes with `crash_code` with the chance `crash_per_mille` in a thousand and otherwise ends well.
+    pub fn crashes(seed: u64, crash_per_mille: u64, runs: usize, crash_code: i32) -> Vec<Run> {
+        let mut rng = SimRng::new(seed);
+        (0..runs)
+            .map(|_| {
+                if rng.below(1000) < crash_per_mille {
+                    Ok(Some(crash_code))
+                } else {
+                    Ok(Some(0))
+                }
+            })
+            .collect()
+    }
+
+    /// Supervise the script: what the supervision made of it and the waits (in milliseconds) it asked for. A script that runs out is a failure to start.
+    pub fn supervise_script(policy: Policy, script: &[Run]) -> (Result<Outcome, String>, Vec<u64>) {
+        let mut next = 0;
+        let mut waits = Vec::new();
+        let result = supervise_with(
+            policy,
+            || {
+                let run = script
+                    .get(next)
+                    .cloned()
+                    .unwrap_or_else(|| Err("the script ran out".into()));
+                next += 1;
+                run
+            },
+            |ms| waits.push(ms),
+        );
+        (result, waits)
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+
+        fn policy(max_restarts: u32, backoff_ms: u64) -> Policy {
+            Policy {
+                max_restarts,
+                backoff_ms,
+            }
+        }
+
+        fn outcome(runs: u32, last_code: Option<i32>, gave_up: bool, signalled: bool) -> Outcome {
+            Outcome {
+                runs,
+                last_code,
+                gave_up,
+                signalled,
+            }
+        }
+
+        #[test]
+        fn a_program_that_ends_well_is_run_once_and_nothing_is_waited() {
+            let (result, waits) = supervise_script(Policy::default(), &[Ok(Some(0))]);
+            assert_eq!(result, Ok(outcome(1, Some(0), false, false)));
+            assert!(waits.is_empty());
+        }
+
+        #[test]
+        fn a_crash_is_started_again_after_the_first_wait_and_the_recovery_is_not_a_failure() {
+            let (result, waits) =
+                supervise_script(Policy::default(), &[Ok(Some(139)), Ok(Some(0))]);
+            assert_eq!(result, Ok(outcome(2, Some(0), false, false)));
+            assert_eq!(waits, vec![500]);
+        }
+
+        #[test]
+        fn a_program_that_keeps_crashing_gives_up_after_its_restarts_with_the_wait_doubled() {
+            let script = vec![Ok(Some(139)); 10];
+            let (result, waits) = supervise_script(Policy::default(), &script);
+            assert_eq!(result, Ok(outcome(3, Some(139), true, false)));
+            assert_eq!(waits, vec![500, 1000]);
+        }
+
+        #[test]
+        fn an_error_of_use_is_never_started_again() {
+            for code in [1, 2] {
+                let (result, waits) =
+                    supervise_script(Policy::default(), &[Ok(Some(code)), Ok(Some(0))]);
+                assert_eq!(result, Ok(outcome(1, Some(code), true, false)));
+                assert!(waits.is_empty());
+            }
+        }
+
+        #[test]
+        fn a_program_ended_by_a_signal_is_neither_a_failure_nor_started_again() {
+            let (result, waits) = supervise_script(Policy::default(), &[Ok(None), Ok(Some(0))]);
+            assert_eq!(result, Ok(outcome(1, None, false, true)));
+            assert!(waits.is_empty());
+        }
+
+        #[test]
+        fn a_program_that_cannot_be_started_is_an_error_and_nothing_is_waited() {
+            let (result, waits) =
+                supervise_script(Policy::default(), &[Err("no such file".into())]);
+            assert_eq!(result, Err("no such file".to_string()));
+            assert!(waits.is_empty());
+            let (ran_out, _) = supervise_script(Policy::default(), &[Ok(Some(139))]);
+            assert!(ran_out.is_err());
+        }
+
+        #[test]
+        fn zero_restarts_means_never_and_the_wait_stops_growing_at_thirty_seconds() {
+            let (result, waits) = supervise_script(policy(0, 500), &[Ok(Some(139)), Ok(Some(0))]);
+            assert_eq!(result, Ok(outcome(1, Some(139), true, false)));
+            assert!(waits.is_empty());
+            let script = vec![Ok(Some(139)); 30];
+            let (result, waits) = supervise_script(policy(12, 1000), &script);
+            assert_eq!(result, Ok(outcome(13, Some(139), true, false)));
+            assert_eq!(&waits[..6], &[1000, 2000, 4000, 8000, 16000, 30000]);
+            assert!(waits[5..].iter().all(|&w| w == 30000));
+            assert_eq!(waits.len(), 12);
+        }
+
+        #[test]
+        fn a_seeded_campaign_follows_the_policy_for_every_seed_and_repeats_exactly() {
+            for seed in 1..=40 {
+                let script = crashes(seed, 600, 6, 139);
+                let pol = policy(5, 10);
+                let first = supervise_script(pol, &script);
+                assert_eq!(first, supervise_script(pol, &script), "seed {seed}");
+                let (result, waits) = first;
+                let out = result.unwrap();
+                let first_good = script.iter().position(|r| *r == Ok(Some(0)));
+                let expected_runs = first_good.map_or(6, |i| i as u32 + 1);
+                assert_eq!(out.runs, expected_runs, "seed {seed}");
+                assert_eq!(out.gave_up, first_good.is_none(), "seed {seed}");
+                assert_eq!(waits.len() as u32, expected_runs - 1, "seed {seed}");
+                for (k, w) in waits.iter().enumerate() {
+                    assert_eq!(*w, 10 << k, "seed {seed}");
+                }
+            }
+        }
+
+        #[test]
+        fn the_generator_never_stalls_on_a_zero_seed() {
+            let mut rng = SimRng::new(0);
+            let drawn: Vec<u64> = (0..8).map(|_| rng.below(1_000_000)).collect();
+            assert!(drawn.windows(2).any(|w| w[0] != w[1]));
+        }
+    }
 }
