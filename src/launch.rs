@@ -40,10 +40,29 @@ fn restarts_after(code: Option<i32>) -> bool {
     matches!(code, Some(c) if c != 0 && c != 1 && c != 2)
 }
 
-/// Runs `program` with `args` and waits. A run that crashed (a code other than 0, 1 and 2) is repeated up to `policy.max_restarts` times, with the waiting time doubling.
+/// True when the arguments make the program start working by itself as soon as it opens (`--start`, `--start-real`): a machine-control program
+/// started again with them would begin the job again, on a machine that may be in the middle of it.
+pub fn starts_by_itself(args: &[String]) -> bool {
+    args.iter().any(|a| a == "--start" || a == "--start-real")
+}
+
+/// The policy for a program started with `args`: the one given, but a program that starts working by itself is never started again after a crash.
+pub fn policy_for(args: &[String], policy: Policy) -> Policy {
+    if starts_by_itself(args) {
+        Policy {
+            max_restarts: 0,
+            ..policy
+        }
+    } else {
+        policy
+    }
+}
+
+/// Runs `program` with `args` and waits. A run that crashed (a code other than 0, 1 and 2) is repeated up to `policy.max_restarts` times, with the waiting time doubling;
+/// a program started with `--start` is not repeated (see [`policy_for`]).
 pub fn supervise(program: &Path, args: &[String], policy: Policy) -> Result<Outcome, String> {
     supervise_with(
-        policy,
+        policy_for(args, policy),
         || {
             Command::new(program)
                 .args(args)
@@ -324,6 +343,27 @@ pub mod sim {
             let (result, waits) = supervise_script(Policy::default(), &script);
             assert_eq!(result, Ok(outcome(3, Some(139), true, false)));
             assert_eq!(waits, vec![500, 1000]);
+        }
+
+        #[test]
+        fn a_program_that_starts_working_by_itself_is_never_started_again_after_a_crash() {
+            use crate::launch::policy_for;
+            let args = |a: &[&str]| a.iter().map(|s| s.to_string()).collect::<Vec<_>>();
+            let p = policy(5, 100);
+            assert_eq!(policy_for(&args(&["job.nc"]), p), p);
+            assert_eq!(policy_for(&args(&["--lang", "de"]), p), p);
+            assert_eq!(policy_for(&args(&["--start", "job.nc"]), p).max_restarts, 0);
+            assert_eq!(
+                policy_for(&args(&["--grbl", "COM3", "--start", "--start-real"]), p),
+                policy(0, 100)
+            );
+            // so a crash with those arguments is one run and a failure
+            let (result, waits) = supervise_script(
+                policy_for(&args(&["--start"]), p),
+                &[Ok(Some(101)), Ok(Some(0))],
+            );
+            assert_eq!(result, Ok(outcome(1, Some(101), true, false)));
+            assert!(waits.is_empty());
         }
 
         #[test]

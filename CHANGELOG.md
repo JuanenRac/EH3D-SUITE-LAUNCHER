@@ -4,6 +4,7 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+- **A program started with `--start` is not started again after a crash:** the supervision of `launch` leaves a program that begins its job by itself (`--start`, `--start-real`) alone when it dies, because starting it again would begin the job again on a machine that may be in the middle of it.
 - **A simulated program that crashes (`launch::sim`):** the supervision now takes the start of the program and the wait as two things handed in (`supervise_with`; `supervise` gives it the real ones and behaves as before), so a script of runs (an exit code, a crash, a signal or a failure to start) and a clock that only writes the waits down can drive it with no process and no time. Nine new tests (128 in all) cover a clean exit, a crash that recovers, a program that keeps crashing and is given up on, the errors of use that are never started again, a signal, a program that cannot be started, the wait doubling up to thirty seconds and 40 seeded campaigns. It has only run on a computer: no real program of the suite was supervised this way.
 
 ## [0.0.6] - Size-limited file reads and a picture mode for the window
