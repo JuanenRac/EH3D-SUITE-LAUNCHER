@@ -347,6 +347,7 @@ pub mod sim {
 
         #[test]
         fn a_program_that_starts_working_by_itself_is_never_started_again_after_a_crash() {
+            use crate::launch::policy_for;
             let args = |a: &[&str]| a.iter().map(|s| s.to_string()).collect::<Vec<_>>();
             let p = policy(5, 100);
             assert_eq!(policy_for(&args(&["job.nc"]), p), p);
