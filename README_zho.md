@@ -18,7 +18,7 @@
 
 ---
 
-**诚实检查 - 当前真正能运行的内容：** 一个 Rust 库和一个命令行程序（`eh3d-launcher`），有 128 个在电脑上运行的测试：通过清单找到套件的程序，启动它们并在失败时重新启动，保存最近的项目，并用每个文件的 SHA-256 写入和校验项目文件。窗口（`eh3d-launcher-gui`，用 `gui` 特性构建）已编写，其逻辑已测试，但尚未构建，也没有在屏幕上看过；没有在机器上试过任何东西，也没有用大量真实文件验证过。
+**诚实检查 - 当前真正能运行的内容：** 一个 Rust 库和一个命令行程序（`eh3d-launcher`），有 137 个在电脑上运行的测试：通过清单找到套件的程序，启动它们并在失败时重新启动，保存最近的项目，并用每个文件的 SHA-256 写入和校验项目文件。窗口（`eh3d-launcher-gui`，用 `gui` 特性构建）已编写，其逻辑已测试，但尚未构建，也没有在屏幕上看过；没有在机器上试过任何东西，也没有用大量真实文件验证过。
 
 ---
 
@@ -31,7 +31,7 @@
 |---|---|
 | 版本 | `0.0.6` |
 | 成熟度 | 可用 |
-| 测试 | 128 |
+| 测试 | 137 |
 | 技术栈 | Rust |
 | 真实硬件 | 未试过：这里的任何内容都没有在机器上运行过 |
 
@@ -47,7 +47,7 @@
 |---|---|---|
 | 核心 | 🟡 | 通过清单找到套件的程序，启动它们并在失败时重新启动，保存最近的项目，并用每个文件的 SHA-256 写入和校验项目文件；已在电脑上用正常和损坏的输入测试，未用大量真实文件验证。 |
 | 命令行 | 🟡 | `eh3d-launcher` 运行与库相同的函数并打印结果；每个错误都以消息和非零退出码返回。 |
-| 测试 | 🟡 | 128 个测试通过（`cargo test`），包含正常情况、边界情况和损坏的输入，以及一个会崩溃、被重新启动、每次等待更久并最终被放弃的模拟程序。 |
+| 测试 | 🟡 | 137 个测试通过（`cargo test`），包含正常情况、边界情况和损坏的输入，以及一个会崩溃、被重新启动、每次等待更久并最终被放弃的模拟程序。 |
 | 安全 | 🟡 | 纯安全 Rust（`forbid(unsafe_code)`）：处理收到的文件时不会 panic，错误的值会返回带原因的错误；没有独立审查。 |
 | 窗口 | 🟠 | 已编写（egui，`--features gui`，程序 `eh3d-launcher-gui`）：最近的项目、打开或新建项目、用与命令行相同的检查添加和移除其文件，以及套件的程序（每个都有启动按钮）；其逻辑已测试，但尚未构建，也没有在屏幕上看过。 |
 | 真实硬件 | 🔴 | 未试过：这里的任何内容都没有在机器上运行过。 |
@@ -158,7 +158,7 @@ cargo run --release --features gui --bin eh3d-launcher-gui -- --shot screen.png 
 
 ## 🧪 测试
 
-测试套件有 128 个测试（`cargo test`，CI 在 Windows 和 Linux 上运行）。它们检查正常情况、边界情况和损坏的输入：空文件、乱码和被截断的文件绝不会 panic。CI 还运行 `cargo fmt --check`、把警告当作错误的 `cargo clippy` （也包括 `--features gui`） 以及 `python -I tools/ci_validate.py`。
+测试套件有 137 个测试（`cargo test`，CI 在 Windows 和 Linux 上运行）。它们检查正常情况、边界情况和损坏的输入：空文件、乱码和被截断的文件绝不会 panic。CI 还运行 `cargo fmt --check`、把警告当作错误的 `cargo clippy` （也包括 `--features gui`） 以及 `python -I tools/ci_validate.py`。
 
 ## 🏗️ 构建与发布
 
@@ -185,6 +185,7 @@ EH3D-SUITE-LAUNCHER/
 │   ├── gui_main.rs                              作为独立程序的窗口，在 Windows 上没有控制台
 │   ├── lang.rs                                  窗口的文字（八种语言）
 │   ├── launch.rs                                逻辑的一部分
+│   ├── limit.rs                                 带大小上限的读取，每种拒绝都有代码
 │   ├── lib.rs                                   库：每个命令所使用的部分
 │   ├── main.rs                                  命令行
 │   ├── project.rs                               逻辑的一部分
@@ -195,12 +196,18 @@ EH3D-SUITE-LAUNCHER/
 │   └── window.rs                                无需屏幕的窗口状态：程序、项目、文件和启动
 ├── tests/
 │   ├── launcher.rs                              库和命令行的测试
-│   └── shot_sample.rs                           截图窗口中示例的测试
+│   ├── read_limit.rs                            所读文件大小上限的测试
+│   ├── shot_sample.rs                           截图窗口中示例的测试
+│   └── reqs.rs                                  需求登记表的测试
 ├── examples/
 │   ├── workspace/                               套件程序的示例清单，用于在截图窗口中显示
 │   └── demo/                                    包含三个文件及其校验和的示例项目列表
 ├── docs/
 │   ├── architecture.json                        架构图数据
+│   ├── NOT_YET.md                               本版本暂不包含的好想法及其原因和时机
+│   ├── REQUIREMENTS.md                          需求登记表：每项的状态、证据和测试
+│   ├── SCOPE.md                                 用途、不做什么以及永远不由它决定的事
+│   ├── STATUS.md                                已有的、缺少的和仍未决定的
 │   └── structure.json                           结构图数据
 ├── tools/                                       CI 和 README 检查及绘图工具
 ├── images/                                      横幅图以及架构和仓库结构图片
@@ -209,6 +216,7 @@ EH3D-SUITE-LAUNCHER/
 ├── Cargo.toml Cargo.lock                        工作区及其锁定的依赖
 ├── rust-toolchain.toml                          固定的 Rust 工具链
 ├── CHANGELOG.md                                 每个版本的变更
+├── AGENTS.md                                    修改本仓库的人需要遵守的规则
 ├── SECURITY.md SUPPORT.md                       如何报告漏洞及在哪里提问
 ├── CONTRIBUTING.md CODE_OF_CONDUCT.md LICENSE   参与贡献、行为准则和许可证
 └── launcher.cfg.example                         launcher.cfg 的所有设置及其默认值
@@ -246,6 +254,11 @@ README 和文本提供英语、西班牙语、法语、意大利语、德语、�
 ## 📚 文档
 
 * [更新日志](CHANGELOG.md)
+* [范围](docs/SCOPE.md)： 程序的用途、不做什么，以及永远不由它决定的事。
+* [需求](docs/REQUIREMENTS.md)： 功能登记表、每项的状态以及证明它的测试。
+* [状态](docs/STATUS.md)： 已有的、缺少的和仍未决定的。
+* [暂不包含](docs/NOT_YET.md)： 本版本暂不包含的好想法。
+* [修改仓库的规则](AGENTS.md)： 修改本仓库的人需要遵守的规则。
 * [架构与结构数据](docs/architecture.json)：绘制两张图所用的数据。
 
 ## 🤝 参与贡献与社区

@@ -18,7 +18,7 @@
 
 ---
 
-**Honesty check - what actually runs today:** a Rust library and a command line program (`eh3d-launcher`) with 128 tests that run on a computer: finds the programs of the suite by their manifests, starts them and starts them again when they fail, keeps the recent projects and writes and checks the project file with the SHA-256 of every file. A window (`eh3d-launcher-gui`, built with the `gui` feature) is written and its logic is tested, but it has not been built or looked at on a screen; nothing has been tried on a machine and nothing has been checked against a collection of real files.
+**Honesty check - what actually runs today:** a Rust library and a command line program (`eh3d-launcher`) with 137 tests that run on a computer: finds the programs of the suite by their manifests, starts them and starts them again when they fail, keeps the recent projects and writes and checks the project file with the SHA-256 of every file. A window (`eh3d-launcher-gui`, built with the `gui` feature) is written and its logic is tested, but it has not been built or looked at on a screen; nothing has been tried on a machine and nothing has been checked against a collection of real files.
 
 ---
 
@@ -31,7 +31,7 @@
 |---|---|
 | Version | `0.0.6` |
 | Maturity | Functional |
-| Tests | 128 |
+| Tests | 137 |
 | Stack | Rust |
 | On real hardware | Not tried: nothing here has run on a machine |
 
@@ -47,7 +47,7 @@ Each line is one part of this repository and the light says how far it is today.
 |---|---|---|
 | Core | 🟡 | finds the programs of the suite by their manifests, starts them and starts them again when they fail, keeps the recent projects and writes and checks the project file with the SHA-256 of every file; tested on a computer with normal and damaged input, not with a collection of real files. |
 | Command line | 🟡 | `eh3d-launcher` runs the same functions as the library and prints the result; every error comes back as a message and a non-zero exit code. |
-| Tests | 🟡 | 128 tests pass (`cargo test`), with normal cases, edge cases and damaged input, and a simulated program that crashes, is started again, waits longer each time and is given up on. |
+| Tests | 🟡 | 137 tests pass (`cargo test`), with normal cases, edge cases and damaged input, and a simulated program that crashes, is started again, waits longer each time and is given up on. |
 | Security | 🟡 | Plain safe Rust (`forbid(unsafe_code)`): nothing panics on the files it is given and a bad value is an error with its reason; no independent review. |
 | Window | 🟠 | Written (egui, `--features gui`, program `eh3d-launcher-gui`): the recent projects, open or create a project, add and remove its files with the checks of the command line, and the programs of the suite with a button to start each one; its logic is tested, but it has not been built or looked at on a screen yet. |
 | Real hardware | 🔴 | Not tried: nothing here has been run on a machine. |
@@ -158,7 +158,7 @@ To take a picture of the window without opening it by hand, run it with `--shot 
 
 ## 🧪 Testing
 
-The suite has 128 tests (`cargo test`, run on Windows and Linux in the CI). They check the normal cases, the edge cases and damaged input: empty files, garbage and cut files never panic. The CI also runs `cargo fmt --check`, `cargo clippy` (also with `--features gui`) with warnings as errors and `python -I tools/ci_validate.py`.
+The suite has 137 tests (`cargo test`, run on Windows and Linux in the CI). They check the normal cases, the edge cases and damaged input: empty files, garbage and cut files never panic. The CI also runs `cargo fmt --check`, `cargo clippy` (also with `--features gui`) with warnings as errors and `python -I tools/ci_validate.py`.
 
 ## 🏗️ Build & Release
 
@@ -185,6 +185,7 @@ EH3D-SUITE-LAUNCHER/
 │   ├── gui_main.rs                              the window as a program of its own, without a console on Windows
 │   ├── lang.rs                                  the words of the window in the eight languages
 │   ├── launch.rs                                a part of the logic
+│   ├── limit.rs                                 files read with a size limit and a code for each refusal
 │   ├── lib.rs                                   the library: what every command uses
 │   ├── main.rs                                  the command line
 │   ├── project.rs                               a part of the logic
@@ -195,12 +196,18 @@ EH3D-SUITE-LAUNCHER/
 │   └── window.rs                                the state of the window, no screen needed: programs, projects, files and launching
 ├── tests/
 │   ├── launcher.rs                              tests of the library and the command line
-│   └── shot_sample.rs                           tests of the samples in the window of a picture
+│   ├── read_limit.rs                            tests of the size limit of the files that are read
+│   ├── shot_sample.rs                           tests of the samples in the window of a picture
+│   └── reqs.rs                                  tests of the register of requirements
 ├── examples/
 │   ├── workspace/                               sample manifests of programs of the suite, to show in the window of a picture
 │   └── demo/                                    a sample project list with three files and their checksums
 ├── docs/
 │   ├── architecture.json                        data of the Architecture picture
+│   ├── NOT_YET.md                               good ideas that are left out of this version, with why and when
+│   ├── REQUIREMENTS.md                          the register of requirements: state, evidence and the test of each
+│   ├── SCOPE.md                                 what the program is for, what it will not do and what it never decides
+│   ├── STATUS.md                                what exists, what is missing and what is still open
 │   └── structure.json                           data of the Repository Structure picture
 ├── tools/                                       CI check, README check and the picture tools
 ├── images/                                      banner and the Architecture and Repository Structure pictures
@@ -209,6 +216,7 @@ EH3D-SUITE-LAUNCHER/
 ├── Cargo.toml Cargo.lock                        the workspace and its locked dependencies
 ├── rust-toolchain.toml                          the pinned Rust toolchain
 ├── CHANGELOG.md                                 what changed in each version
+├── AGENTS.md                                    the rules for anyone who changes the repository
 ├── SECURITY.md SUPPORT.md                       how to report a vulnerability and where to ask
 ├── CONTRIBUTING.md CODE_OF_CONDUCT.md LICENSE   how to contribute, the code of conduct and the licence
 └── launcher.cfg.example                         every setting of launcher.cfg with its default
@@ -246,6 +254,11 @@ README and texts exist in English, Spanish, French, Italian, German, Chinese, Ja
 ## 📚 Documentation
 
 * [Changelog](CHANGELOG.md)
+* [Scope](docs/SCOPE.md): what the program is for, what it will not do and what it never decides.
+* [Requirements](docs/REQUIREMENTS.md): the register of capabilities, the state of each and the test that shows it.
+* [Status](docs/STATUS.md): what exists, what is missing and what is still open.
+* [Not yet](docs/NOT_YET.md): good ideas that are left out of this version.
+* [Rules for changing the repository](AGENTS.md): the rules for anyone who changes the repository.
 * [Architecture and structure data](docs/architecture.json): the data the two pictures are drawn from.
 
 ## 🤝 Contributing & Community

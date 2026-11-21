@@ -18,7 +18,7 @@
 
 ---
 
-**Vérification d'honnêteté - ce qui fonctionne aujourd'hui :** une bibliothèque Rust et un programme en ligne de commande (`eh3d-launcher`) avec 128 tests exécutés sur un ordinateur : trouve les programmes de la suite par leurs manifestes, les lance et les relance en cas d'échec, garde les projets récents et écrit et vérifie le fichier de projet avec le SHA-256 de chaque fichier. Une fenêtre (`eh3d-launcher-gui`, compilée avec la fonctionnalité `gui`) est écrite et sa logique est testée, mais elle n'a été ni compilée ni regardée sur un écran ; rien n'a été essayé sur une machine et rien n'a été vérifié sur une collection de fichiers réels.
+**Vérification d'honnêteté - ce qui fonctionne aujourd'hui :** une bibliothèque Rust et un programme en ligne de commande (`eh3d-launcher`) avec 137 tests exécutés sur un ordinateur : trouve les programmes de la suite par leurs manifestes, les lance et les relance en cas d'échec, garde les projets récents et écrit et vérifie le fichier de projet avec le SHA-256 de chaque fichier. Une fenêtre (`eh3d-launcher-gui`, compilée avec la fonctionnalité `gui`) est écrite et sa logique est testée, mais elle n'a été ni compilée ni regardée sur un écran ; rien n'a été essayé sur une machine et rien n'a été vérifié sur une collection de fichiers réels.
 
 ---
 
@@ -31,7 +31,7 @@
 |---|---|
 | Version | `0.0.6` |
 | Maturité | Fonctionnel |
-| Tests | 128 |
+| Tests | 137 |
 | Pile technique | Rust |
 | Sur du matériel réel | Non essayé : rien ici n'a fonctionné sur une machine |
 
@@ -47,7 +47,7 @@ Chaque ligne est une partie de ce dépôt et le feu dit où elle en est aujourd'
 |---|---|---|
 | Cœur | 🟡 | trouve les programmes de la suite par leurs manifestes, les lance et les relance en cas d'échec, garde les projets récents et écrit et vérifie le fichier de projet avec le SHA-256 de chaque fichier ; testé sur un ordinateur avec des entrées normales et abîmées, pas avec une collection de fichiers réels. |
 | Ligne de commande | 🟡 | `eh3d-launcher` exécute les mêmes fonctions que la bibliothèque et affiche le résultat ; chaque erreur revient sous forme de message et de code de sortie non nul. |
-| Tests | 🟡 | 128 tests passent (`cargo test`), avec des cas normaux, des cas limites et des entrées abîmées, et un programme simulé qui plante, est relancé, attend plus longtemps à chaque fois et finit abandonné. |
+| Tests | 🟡 | 137 tests passent (`cargo test`), avec des cas normaux, des cas limites et des entrées abîmées, et un programme simulé qui plante, est relancé, attend plus longtemps à chaque fois et finit abandonné. |
 | Sécurité | 🟡 | Rust sûr et simple (`forbid(unsafe_code)`) : rien ne panique sur les fichiers reçus et une mauvaise valeur est une erreur avec sa raison ; pas de revue indépendante. |
 | Fenêtre | 🟠 | Écrite (egui, `--features gui`, programme `eh3d-launcher-gui`) : les projets récents, ouvrir ou créer un projet, ajouter et retirer ses fichiers avec les vérifications de la ligne de commande, et les programmes de la suite avec un bouton pour lancer chacun ; sa logique est testée, mais elle n'a pas encore été compilée ni regardée sur un écran. |
 | Matériel réel | 🔴 | Non essayé : rien ici n'a été exécuté sur une machine. |
@@ -158,7 +158,7 @@ Pour prendre une capture de la fenêtre sans l'ouvrir à la main, lancez-la avec
 
 ## 🧪 Tests
 
-La suite compte 128 tests (`cargo test`, exécutés sous Windows et Linux dans le CI). Ils vérifient les cas normaux, les cas limites et les entrées abîmées : fichiers vides, bruit et fichiers coupés ne font jamais paniquer. Le CI exécute aussi `cargo fmt --check`, `cargo clippy` (aussi avec `--features gui`) avec les avertissements comme erreurs et `python -I tools/ci_validate.py`.
+La suite compte 137 tests (`cargo test`, exécutés sous Windows et Linux dans le CI). Ils vérifient les cas normaux, les cas limites et les entrées abîmées : fichiers vides, bruit et fichiers coupés ne font jamais paniquer. Le CI exécute aussi `cargo fmt --check`, `cargo clippy` (aussi avec `--features gui`) avec les avertissements comme erreurs et `python -I tools/ci_validate.py`.
 
 ## 🏗️ Compilation et publication
 
@@ -185,6 +185,7 @@ EH3D-SUITE-LAUNCHER/
 │   ├── gui_main.rs                              la fenêtre comme programme à part, sans console sous Windows
 │   ├── lang.rs                                  les mots de la fenêtre dans les huit langues
 │   ├── launch.rs                                une partie de la logique
+│   ├── limit.rs                                 fichiers lus avec limite de taille, un code par refus
 │   ├── lib.rs                                   la bibliothèque : ce que chaque commande utilise
 │   ├── main.rs                                  la ligne de commande
 │   ├── project.rs                               une partie de la logique
@@ -195,12 +196,18 @@ EH3D-SUITE-LAUNCHER/
 │   └── window.rs                                l'état de la fenêtre sans écran : programmes, projets, fichiers et lancement
 ├── tests/
 │   ├── launcher.rs                              tests de la bibliothèque et de la ligne de commande
-│   └── shot_sample.rs                           tests des exemples dans la fenêtre d'une capture
+│   ├── read_limit.rs                            tests de la limite de taille des fichiers lus
+│   ├── shot_sample.rs                           tests des exemples dans la fenêtre d'une capture
+│   └── reqs.rs                                  tests du registre des exigences
 ├── examples/
 │   ├── workspace/                               manifestes d'exemple de programmes de la suite, à afficher dans la fenêtre d'une capture
 │   └── demo/                                    une liste de projet d'exemple avec trois fichiers et leurs sommes de contrôle
 ├── docs/
 │   ├── architecture.json                        données de l'image d'Architecture
+│   ├── NOT_YET.md                               de bonnes idées hors de cette version, avec pourquoi et quand
+│   ├── REQUIREMENTS.md                          le registre des exigences : état, preuve et test de chacune
+│   ├── SCOPE.md                                 à quoi il sert, ce qu'il ne fera pas et ce qu'il ne décide jamais
+│   ├── STATUS.md                                ce qui existe, ce qui manque et ce qui reste ouvert
 │   └── structure.json                           données de l'image de Structure
 ├── tools/                                       contrôle de la CI et du README et outils d'images
 ├── images/                                      bannière et images d'Architecture et de Structure du dépôt
@@ -209,6 +216,7 @@ EH3D-SUITE-LAUNCHER/
 ├── Cargo.toml Cargo.lock                        le workspace et ses dépendances verrouillées
 ├── rust-toolchain.toml                          la toolchain Rust épinglée
 ├── CHANGELOG.md                                 ce qui a changé dans chaque version
+├── AGENTS.md                                    les règles pour qui modifie le dépôt
 ├── SECURITY.md SUPPORT.md                       signaler une vulnérabilité et poser des questions
 ├── CONTRIBUTING.md CODE_OF_CONDUCT.md LICENSE   contribuer, code de conduite et licence
 └── launcher.cfg.example                         tous les réglages de launcher.cfg avec leur valeur par défaut
@@ -246,6 +254,11 @@ Le README et les textes existent en anglais, espagnol, français, italien, allem
 ## 📚 Documentation
 
 * [Journal des modifications](CHANGELOG.md)
+* [Périmètre](docs/SCOPE.md): à quoi sert le programme, ce qu'il ne fera pas et ce qu'il ne décide jamais.
+* [Exigences](docs/REQUIREMENTS.md): le registre des capacités, l'état de chacune et le test qui la montre.
+* [État](docs/STATUS.md): ce qui existe, ce qui manque et ce qui reste ouvert.
+* [Pas encore](docs/NOT_YET.md): de bonnes idées laissées de côté dans cette version.
+* [Règles pour modifier le dépôt](AGENTS.md): les règles pour qui modifie le dépôt.
 * [Données d'architecture et de structure](docs/architecture.json) : les données qui servent à dessiner les deux images.
 
 ## 🤝 Contribuer et communauté
