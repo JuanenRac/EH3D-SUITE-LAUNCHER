@@ -4,6 +4,8 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+## [0.0.7] - Behaviour tests of the launcher and its eight languages
+
 - **Behaviour tests at the exact edge:** `tests/behaviour.rs` adds 85 deterministic tests without changing the behaviour: every bound of the settings (window, restarts, wait, size limit of the files) tested on both sides, the size limit of what is read to the byte, the file browser, the arguments of the window and of the pictures, the words of the eight languages, the restart policy (the wait doubles and stops at thirty seconds, a crash is given up on), the workspace of the configuration, the manifests of the programs, the list of recent projects and the project list (damaged files, reserved names, case-only duplicates, safe writing without lock or temporary files).
 - **The README says the maturity of the manifest:** the badge and the Maturity row of the eight READMEs read functional, as the manifest does, and the check of the status lights now fails when they differ.
 - **A program started with `--start` is not started again after a crash:** the supervision of `launch` leaves a program that begins its job by itself (`--start`, `--start-real`) alone when it dies, because starting it again would begin the job again on a machine that may be in the middle of it.
