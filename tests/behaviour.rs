@@ -660,7 +660,7 @@ fn the_simulated_crashes_are_repeatable_and_exact_at_the_extremes() {
     );
     assert!(crashes(3, 0, 20, 9).iter().all(|r| *r == Ok(Some(0))));
     assert!(crashes(3, 1000, 20, 9).iter().all(|r| *r == Ok(Some(9))));
-    assert!(crashes(0, 500, 20, 9).iter().any(|r| *r == Ok(Some(9))));
+    assert!(crashes(0, 500, 20, 9).contains(&Ok(Some(9))));
 }
 
 #[test]
