@@ -63,6 +63,10 @@ pub fn add(path: &Path, file: &str) -> Result<Vec<String>, String> {
 /// `add`, reading the list only when it is not larger than `max_bytes`.
 pub fn add_with_limit(path: &Path, file: &str, max_bytes: u64) -> Result<Vec<String>, String> {
     let entry = canonical(file)?;
+    // the first time there is no folder of the launcher yet, and the lock is made inside it
+    if let Some(parent) = path.parent().filter(|p| !p.as_os_str().is_empty()) {
+        fs::create_dir_all(parent).map_err(|e| format!("{}: {e}", parent.display()))?;
+    }
     crate::project::with_lock(path, || {
         let mut list = load_with_limit(path, max_bytes);
         remember(&mut list, &entry);
