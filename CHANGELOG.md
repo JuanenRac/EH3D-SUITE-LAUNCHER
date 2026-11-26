@@ -4,6 +4,7 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+- **A damaged list of layers is no longer written over (fix):** a project file whose `layers` was not a list was read as a project with no layer, so adding one wrote the file without what it held. It is now an error and the file is left as it is. One new test.
 - The shared workflow checker (`tools/workflow_hygiene.py`) is the current one of the documentation hub: the filters under a trigger (branches, paths, types) are no longer read as events.
 
 ## [0.0.7] - Behaviour tests of the launcher and its eight languages
