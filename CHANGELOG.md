@@ -4,6 +4,8 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+- The shared workflow checker (`tools/workflow_hygiene.py`) is the current one of the documentation hub: the filters under a trigger (branches, paths, types) are no longer read as events.
+
 ## [0.0.7] - Behaviour tests of the launcher and its eight languages
 
 - **Behaviour tests at the exact edge:** `tests/behaviour.rs` adds 85 deterministic tests without changing the behaviour: every bound of the settings (window, restarts, wait, size limit of the files) tested on both sides, the size limit of what is read to the byte, the file browser, the arguments of the window and of the pictures, the words of the eight languages, the restart policy (the wait doubles and stops at thirty seconds, a crash is given up on), the workspace of the configuration, the manifests of the programs, the list of recent projects and the project list (damaged files, reserved names, case-only duplicates, safe writing without lock or temporary files).
