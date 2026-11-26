@@ -1224,3 +1224,42 @@ fn adding_and_removing_a_layer_in_the_file_counts_the_layers_and_leaves_no_lock_
     names.sort();
     assert_eq!(names, vec!["a.gtl", "b.drl", "p.eh3dlist"]);
 }
+
+#[test]
+fn the_first_file_is_remembered_when_the_folder_of_the_launcher_is_not_there_yet() {
+    let dir = temp("recent-first");
+    let project = dir.join("a.eh3dlist");
+    fs::write(&project, "x").unwrap();
+    let list_file = dir.join("not-yet").join("eh3d-launcher").join("recent.txt");
+    let list = recent::add(&list_file, project.to_str().unwrap()).unwrap();
+    assert_eq!(list.len(), 1);
+    assert_eq!(recent::load(&list_file), list);
+}
+
+#[test]
+fn writers_at_the_same_time_leave_one_whole_file_and_no_file_of_the_person_is_taken() {
+    let dir = temp("atomic-together");
+    let file = dir.join("p.eh3dlist");
+    let theirs = dir.join("p.eh3dlist.tmp");
+    fs::write(&theirs, "mine").unwrap();
+    let texts: Vec<String> = (0..8)
+        .map(|k| format!("line {k}\n").repeat(2_000 + k * 100))
+        .collect();
+    let written: usize = std::thread::scope(|scope| {
+        let handles: Vec<_> = texts
+            .iter()
+            .map(|t| {
+                let file = &file;
+                scope.spawn(move || {
+                    usize::from(eh3d_suite_launcher::project::write_atomic(file, t).is_ok())
+                })
+            })
+            .collect();
+        handles.into_iter().map(|h| h.join().unwrap()).sum()
+    });
+    // on Windows a rename over a file that another rename holds at that moment can be refused: the file is whole all the same
+    assert!(written >= 1);
+    assert!(texts.contains(&fs::read_to_string(&file).unwrap()));
+    assert_eq!(fs::read_to_string(&theirs).unwrap(), "mine");
+    assert_eq!(fs::read_dir(&dir).unwrap().count(), 2);
+}

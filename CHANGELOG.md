@@ -4,6 +4,8 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+- **The first project of a new installation is remembered (fix):** when the folder of the launcher was not there yet, `new-project`, `recent add` and opening a project in the window ended with an error on the lock of the recent list.
+- **A temporary file of its own for every write (fix):** two writes of the same file at once shared one temporary name and could mix their text, and a file of the person with that name was lost.
 - **A damaged list of layers is no longer written over (fix):** a project file whose `layers` was not a list was read as a project with no layer, so adding one wrote the file without what it held. It is now an error and the file is left as it is. One new test.
 - The shared workflow checker (`tools/workflow_hygiene.py`) is the current one of the documentation hub: the filters under a trigger (branches, paths, types) are no longer read as events.
 

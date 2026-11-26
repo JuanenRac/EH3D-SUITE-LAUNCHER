@@ -87,12 +87,26 @@ pub struct Project {
     pub zero: (f64, f64),
 }
 
-/// Writes `text` to a temporary file beside `file` and renames it over `file`, so that a cut or a full disk leaves the old file whole.
+/// Writes `text` to a temporary file beside `file` and renames it over `file`, so that a cut or a full disk leaves the old file whole. The temporary file has
+/// a name of its own for each process and call, is only ever made new and is on the disk before the rename.
 pub fn write_atomic(file: &Path, text: &str) -> std::io::Result<()> {
+    use std::io::Write;
+    use std::sync::atomic::{AtomicU64, Ordering};
+    static COUNTER: AtomicU64 = AtomicU64::new(0);
     let mut tmp = file.as_os_str().to_owned();
-    tmp.push(".tmp");
+    tmp.push(format!(
+        ".{}.{}.tmp",
+        std::process::id(),
+        COUNTER.fetch_add(1, Ordering::Relaxed)
+    ));
     let tmp = std::path::PathBuf::from(tmp);
-    if let Err(e) = fs::write(&tmp, text) {
+    let mut out = fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(&tmp)?;
+    let written = out.write_all(text.as_bytes()).and_then(|()| out.sync_all());
+    drop(out);
+    if let Err(e) = written {
         let _ = fs::remove_file(&tmp);
         return Err(e);
     }
