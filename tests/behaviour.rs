@@ -1061,8 +1061,13 @@ fn a_project_file_of_a_newer_format_or_without_a_name_is_refused() {
 }
 
 #[test]
-fn layers_that_are_not_a_list_give_an_empty_project_and_a_layer_without_a_path_is_refused() {
-    assert!(Project::from_json("{\"name\":\"x\",\"layers\":5}")
+fn layers_that_are_not_a_list_are_refused_and_so_is_a_layer_without_a_path() {
+    for layers in ["5", "\"a.gtl\"", "{\"path\":\"a.gtl\"}", "true"] {
+        let text = format!("{{\"name\":\"x\",\"layers\":{layers}}}");
+        let e = Project::from_json(&text).unwrap_err();
+        assert!(e.contains("not a list"), "{layers}: {e}");
+    }
+    assert!(Project::from_json("{\"name\":\"x\",\"layers\":null}")
         .unwrap()
         .layers
         .is_empty());
@@ -1178,6 +1183,22 @@ fn a_new_project_file_needs_the_right_extension_and_never_replaces_a_file() {
     assert_eq!(Project::load(&file).unwrap().name, "P");
     assert!(create_file(dir.join("b.eh3dlist").to_str().unwrap(), "  ").is_err());
     assert!(!dir.join("b.eh3dlist").exists());
+}
+
+#[test]
+fn a_damaged_list_of_layers_is_never_written_over() {
+    let dir = temp("layers-damaged");
+    fs::write(dir.join("a.gtl"), "x").unwrap();
+    let file = dir.join("p.eh3dlist");
+    let damaged = "{\"name\":\"p\",\"layers\":{\"path\":\"kept.gtl\"}}";
+    fs::write(&file, damaged).unwrap();
+    for result in [
+        add_layer_to_file(&file, &dir.join("a.gtl")),
+        remove_layer_from_file(&file, "kept.gtl"),
+    ] {
+        assert!(result.unwrap_err().contains("not a list"));
+    }
+    assert_eq!(fs::read_to_string(&file).unwrap(), damaged);
 }
 
 #[test]

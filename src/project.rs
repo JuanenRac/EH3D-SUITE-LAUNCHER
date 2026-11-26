@@ -301,12 +301,13 @@ impl Project {
             .ok_or("the project file has no name")?;
         check_name(name)?;
         let mut layers = Vec::new();
-        for item in v
-            .get("layers")
-            .and_then(|l| l.as_array())
-            .map(|a| a.as_slice())
-            .unwrap_or(&[])
-        {
+        // a `layers` that is something else than a list is damage, not an empty list: read as empty, the next change would write the file without what it held
+        let listed = match v.get("layers") {
+            None | Some(Value::Null) => &[][..],
+            Some(Value::Array(a)) => a.as_slice(),
+            Some(_) => return Err("the layers of the project file are not a list".into()),
+        };
+        for item in listed {
             if let Some(path) = item.as_str() {
                 // format 0: a list of paths without kind or checksum
                 if !is_inside_path(path) {
