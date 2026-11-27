@@ -18,7 +18,7 @@
 
 ---
 
-**Ehrlichkeitscheck - was heute wirklich läuft:** eine Rust-Bibliothek und ein Kommandozeilenprogramm (`eh3d-launcher`) mit 225 Tests, die auf einem Computer laufen: findet die Programme der Suite über ihre Manifeste, startet sie und startet sie bei Fehlern neu, führt die zuletzt verwendeten Projekte und schreibt und prüft die Projektdatei mit dem SHA-256 jeder Datei. Ein Fenster (`eh3d-launcher-gui`, mit dem Feature `gui` gebaut) ist geschrieben und seine Logik getestet, aber es wurde weder gebaut noch auf einem Bildschirm angesehen; nichts wurde an einer Maschine ausprobiert und nichts an einer Sammlung echter Dateien geprüft.
+**Ehrlichkeitscheck - was heute wirklich läuft:** eine Rust-Bibliothek und ein Kommandozeilenprogramm (`eh3d-launcher`) mit 228 Tests, die auf einem Computer laufen: findet die Programme der Suite über ihre Manifeste, startet sie und startet sie bei Fehlern neu, führt die zuletzt verwendeten Projekte und schreibt und prüft die Projektdatei mit dem SHA-256 jeder Datei. Ein Fenster (`eh3d-launcher-gui`, mit dem Feature `gui` gebaut) ist geschrieben und seine Logik getestet, aber es wurde weder gebaut noch auf einem Bildschirm angesehen; nichts wurde an einer Maschine ausprobiert und nichts an einer Sammlung echter Dateien geprüft.
 
 ---
 
@@ -31,7 +31,7 @@
 |---|---|
 | Version | `0.0.7` |
 | Reifegrad | Funktionsfähig |
-| Tests | 225 |
+| Tests | 228 |
 | Technologie-Stack | Rust |
 | Auf echter Hardware | Nicht erprobt: nichts davon lief an einer Maschine |
 
@@ -47,7 +47,7 @@ Jede Zeile ist ein Teil dieses Repositorys, und die Ampel sagt, wie weit er heut
 |---|---|---|
 | Kern | 🟡 | findet die Programme der Suite über ihre Manifeste, startet sie und startet sie bei Fehlern neu, führt die zuletzt verwendeten Projekte und schreibt und prüft die Projektdatei mit dem SHA-256 jeder Datei; am Computer mit normalen und beschädigten Eingaben getestet, nicht mit einer Sammlung echter Dateien. |
 | Kommandozeile | 🟡 | `eh3d-launcher` führt dieselben Funktionen wie die Bibliothek aus und gibt das Ergebnis aus; jeder Fehler kommt als Meldung mit einem Exit-Code ungleich null zurück. |
-| Tests | 🟡 | 225 Tests bestehen (`cargo test`), mit Normalfällen, Grenzfällen und beschädigten Eingaben sowie einem simulierten Programm, das abstürzt, neu gestartet wird, jedes Mal länger wartet und aufgegeben wird. |
+| Tests | 🟡 | 228 Tests bestehen (`cargo test`), mit Normalfällen, Grenzfällen und beschädigten Eingaben sowie einem simulierten Programm, das abstürzt, neu gestartet wird, jedes Mal länger wartet und aufgegeben wird. |
 | Sicherheit | 🟡 | Reines sicheres Rust (`forbid(unsafe_code)`): nichts gerät bei den übergebenen Dateien in Panik und ein schlechter Wert ist ein Fehler mit Begründung; keine unabhängige Prüfung. |
 | Fenster | 🟠 | Geschrieben (egui, `--features gui`, Programm `eh3d-launcher-gui`): die letzten Projekte, Projekt öffnen oder anlegen, seine Dateien mit den Prüfungen der Kommandozeile hinzufügen und entfernen, und die Programme der Suite mit einer Schaltfläche zum Starten jedes Programms; seine Logik ist getestet, aber es wurde noch nicht gebaut oder auf einem Bildschirm angesehen. |
 | Echte Hardware | 🔴 | Nicht erprobt: nichts davon wurde an einer Maschine ausgeführt. |
@@ -57,7 +57,7 @@ Jede Zeile ist ein Teil dieses Repositorys, und die Ampel sagt, wie weit er heut
 
 * **Das Register** (`src/registry.rs`): Jedes Repository der Suite sagt in seiner `eh3d.project.json`, was es ist; der Launcher liest sie, überspringt beschädigte mit Begründung und meldet, welche Programme gebaut sind.
 * **Der Starter** (`src/launch.rs`): startet ein Programm der Suite und startet es bei einem Fehler bis zu zweimal neu, mit sich verdoppelnder Wartezeit; ein Programm, das gut endet, wird in Ruhe gelassen.
-* **Die Projektdatei** (`src/project.rs`, `.eh3dlist`): Name, die Dateien des Auftrags mit Art und SHA-256 und der Arbeitsnullpunkt; beim Lesen werden Pfade, die das Projekt verlassen, abgelehnt und das erste Format migriert. **Zuletzt verwendet** (`src/recent.rs`) merkt sich die letzten zehn.
+* **Die Projektdatei** (`src/project.rs`, `.eh3dlist`): Name, die Dateien des Auftrags mit Art und SHA-256 und der Arbeitsnullpunkt; beim Lesen werden Pfade, die das Projekt verlassen, abgelehnt und das erste Format migriert. Ein Werkstücknullpunkt, der nicht aus zwei Zahlen besteht, wird abgelehnt und die Datei bleibt, wie sie ist. **Zuletzt verwendet** (`src/recent.rs`) merkt sich die letzten zehn.
 * **Finden und Neustart:** Die Programmdatei wird über den `[[bin]]`-Namen der `Cargo.toml` gefunden (`eh3d-camdebug`, `eh3d-pnp` ...); ein Programm, das der Bediener absichtlich beendet hat (Signal) oder das seine Argumente abgelehnt hat (Exit-Code 1 oder 2), wird nicht neu gestartet: nur ein Absturz.
 * **Das Fenster** (`src/window.rs`, `src/gui.rs`; `--features gui`, Programm `eh3d-launcher-gui`): die letzten Projekte, Projekt öffnen oder anlegen, seine Dateien mit denselben Prüfungen wie `add-layer` hinzufügen und entfernen, und die Programme der Suite mit einer Schaltfläche, die jedes mit dem Projekt startet. Zustand, Aktionen, Einstellungen und Wörter sind einfacher Code mit Tests; das Zeichnen ist dünn. Geschrieben, noch nicht auf einem Bildschirm gesehen.
 
@@ -81,7 +81,7 @@ Wie die Teile dieses Repositorys zusammenpassen: wer es nutzt, was es enthält u
 * **Kein Raten:** Ein unsinniger Wert ist ein Fehler, der sagt welcher und warum, nie ein Ergebnis, das nur richtig aussieht.
 * **Größenlimit für gelesene Dateien:** Die Manifeste der Repositories und die Liste der letzten Projekte werden in der Kommandozeile und im Fenster nur gelesen, wenn sie nicht größer sind als `max_file_mib` in `launcher.cfg` (standardmäßig 16 MiB, 1 bis 1024), `launcher.cfg` selbst bis 1 MiB; ein zu großes Manifest wird wie jedes beschädigte Manifest mit dem Code `file_too_large` und seinem Namen übersprungen, `eh3d-launcher recent` endet bei einer zu großen Liste mit diesem Code und das Fenster startet mit leerer Liste. Die anderen Codes sind `file_unreadable` und `file_not_text`.
 * **Kein unsafe-Code:** `#![forbid(unsafe_code)]` in Bibliothek und Programm.
-* **Sicherere Listen und Projekte:** ein Ebenenpfad darf nicht `.` sein, kein von Windows abgelehnter Name (`CON`, `AUX`, `COM1` ...) und nicht auf Punkt oder Leerzeichen enden, zwei Ebenen, die sich nur in der Groß-/Kleinschreibung unterscheiden, sind eine, die Liste der zuletzt verwendeten Projekte behält den vollständigen Pfad einer vorhandenen Datei, und zwei gleichzeitige Läufe (`recent`, `add-layer`) verlieren die Änderung des anderen nicht, weil die Datei während der Änderung gesperrt ist; eine Ebene wird in Blöcken zu 64 KiB gehasht, und ein durch ein Signal beendetes Programm wird als solches gemeldet und nicht als Fehler.
+* **Sicherere Listen und Projekte:** ein Ebenenpfad darf nicht `.` sein, kein von Windows abgelehnter Name (`CON`, `AUX`, `COM1` ...) und nicht auf Punkt oder Leerzeichen enden, zwei Ebenen, die sich nur in der Groß-/Kleinschreibung unterscheiden, sind eine, die Liste der zuletzt verwendeten Projekte behält den vollständigen Pfad einer vorhandenen Datei, und zwei gleichzeitige Läufe (`recent`, `add-layer`) verlieren die Änderung des anderen nicht, weil die Datei während der Änderung gesperrt ist; eine Ebene wird in Blöcken zu 64 KiB gehasht, bevor die Projektliste gesperrt wird, und ein durch ein Signal beendetes Programm wird als solches gemeldet und nicht als Fehler.
 
 ## 🔒 Sicherheit und Schutz
 
@@ -158,7 +158,7 @@ Um ein Bild des Fensters aufzunehmen, ohne es von Hand zu öffnen, starten Sie e
 
 ## 🧪 Tests
 
-Die Suite hat 225 Tests (`cargo test`, in der CI unter Windows und Linux). Sie prüfen Normalfälle, Grenzfälle und beschädigte Eingaben: leere Dateien, Datenmüll und abgeschnittene Dateien lösen nie eine Panik aus. Die CI führt außerdem `cargo fmt --check`, `cargo clippy` (auch mit `--features gui`) mit Warnungen als Fehlern und `python -I tools/ci_validate.py` aus.
+Die Suite hat 228 Tests (`cargo test`, in der CI unter Windows und Linux). Sie prüfen Normalfälle, Grenzfälle und beschädigte Eingaben: leere Dateien, Datenmüll und abgeschnittene Dateien lösen nie eine Panik aus. Die CI führt außerdem `cargo fmt --check`, `cargo clippy` (auch mit `--features gui`) mit Warnungen als Fehlern und `python -I tools/ci_validate.py` aus.
 
 ## 🏗️ Build und Veröffentlichung
 

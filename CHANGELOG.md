@@ -4,6 +4,8 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+- **A work zero that is not a number is refused (fix):** it was read as 0 and the next change of the project wrote that 0 over what the file held. A project list without `zero` still has the origin; one with it needs a number for `x` and for `y`, and the error says which is missing. A zero that is not finite is not written either.
+- **A layer is hashed before the project list is locked (fix):** hashing a large file could take longer than the ten seconds after which a lock is taken to be abandoned, so a second run could write the list at the same time. Under the lock the list is only read, checked and written; a file that changed after it was hashed is not added. Three new tests.
 - **The first project of a new installation is remembered (fix):** when the folder of the launcher was not there yet, `new-project`, `recent add` and opening a project in the window ended with an error on the lock of the recent list.
 - **A temporary file of its own for every write (fix):** two writes of the same file at once shared one temporary name and could mix their text, and a file of the person with that name was lost.
 - **A damaged list of layers is no longer written over (fix):** a project file whose `layers` was not a list was read as a project with no layer, so adding one wrote the file without what it held. It is now an error and the file is left as it is. One new test.

@@ -18,7 +18,7 @@
 
 ---
 
-**Vérification d'honnêteté - ce qui fonctionne aujourd'hui :** une bibliothèque Rust et un programme en ligne de commande (`eh3d-launcher`) avec 225 tests exécutés sur un ordinateur : trouve les programmes de la suite par leurs manifestes, les lance et les relance en cas d'échec, garde les projets récents et écrit et vérifie le fichier de projet avec le SHA-256 de chaque fichier. Une fenêtre (`eh3d-launcher-gui`, compilée avec la fonctionnalité `gui`) est écrite et sa logique est testée, mais elle n'a été ni compilée ni regardée sur un écran ; rien n'a été essayé sur une machine et rien n'a été vérifié sur une collection de fichiers réels.
+**Vérification d'honnêteté - ce qui fonctionne aujourd'hui :** une bibliothèque Rust et un programme en ligne de commande (`eh3d-launcher`) avec 228 tests exécutés sur un ordinateur : trouve les programmes de la suite par leurs manifestes, les lance et les relance en cas d'échec, garde les projets récents et écrit et vérifie le fichier de projet avec le SHA-256 de chaque fichier. Une fenêtre (`eh3d-launcher-gui`, compilée avec la fonctionnalité `gui`) est écrite et sa logique est testée, mais elle n'a été ni compilée ni regardée sur un écran ; rien n'a été essayé sur une machine et rien n'a été vérifié sur une collection de fichiers réels.
 
 ---
 
@@ -31,7 +31,7 @@
 |---|---|
 | Version | `0.0.7` |
 | Maturité | Fonctionnel |
-| Tests | 225 |
+| Tests | 228 |
 | Pile technique | Rust |
 | Sur du matériel réel | Non essayé : rien ici n'a fonctionné sur une machine |
 
@@ -47,7 +47,7 @@ Chaque ligne est une partie de ce dépôt et le feu dit où elle en est aujourd'
 |---|---|---|
 | Cœur | 🟡 | trouve les programmes de la suite par leurs manifestes, les lance et les relance en cas d'échec, garde les projets récents et écrit et vérifie le fichier de projet avec le SHA-256 de chaque fichier ; testé sur un ordinateur avec des entrées normales et abîmées, pas avec une collection de fichiers réels. |
 | Ligne de commande | 🟡 | `eh3d-launcher` exécute les mêmes fonctions que la bibliothèque et affiche le résultat ; chaque erreur revient sous forme de message et de code de sortie non nul. |
-| Tests | 🟡 | 225 tests passent (`cargo test`), avec des cas normaux, des cas limites et des entrées abîmées, et un programme simulé qui plante, est relancé, attend plus longtemps à chaque fois et finit abandonné. |
+| Tests | 🟡 | 228 tests passent (`cargo test`), avec des cas normaux, des cas limites et des entrées abîmées, et un programme simulé qui plante, est relancé, attend plus longtemps à chaque fois et finit abandonné. |
 | Sécurité | 🟡 | Rust sûr et simple (`forbid(unsafe_code)`) : rien ne panique sur les fichiers reçus et une mauvaise valeur est une erreur avec sa raison ; pas de revue indépendante. |
 | Fenêtre | 🟠 | Écrite (egui, `--features gui`, programme `eh3d-launcher-gui`) : les projets récents, ouvrir ou créer un projet, ajouter et retirer ses fichiers avec les vérifications de la ligne de commande, et les programmes de la suite avec un bouton pour lancer chacun ; sa logique est testée, mais elle n'a pas encore été compilée ni regardée sur un écran. |
 | Matériel réel | 🔴 | Non essayé : rien ici n'a été exécuté sur une machine. |
@@ -57,7 +57,7 @@ Chaque ligne est une partie de ce dépôt et le feu dit où elle en est aujourd'
 
 * **Le registre** (`src/registry.rs`) : chaque dépôt de la suite dit ce qu'il est dans son `eh3d.project.json` ; le launcher les lit, saute les abîmés avec la raison et indique quels programmes sont compilés.
 * **Le lanceur** (`src/launch.rs`) : lance un programme de la suite et, s'il se termine en erreur, le relance jusqu'à deux fois avec une attente qui double ; un programme qui se termine bien est laissé tranquille.
-* **Le fichier de projet** (`src/project.rs`, `.eh3dlist`) : le nom, les fichiers du travail avec leur type et SHA-256 et le zéro de travail ; à la lecture il refuse les chemins qui sortent du projet et migre le premier format. **Projets récents** (`src/recent.rs`) garde les dix derniers.
+* **Le fichier de projet** (`src/project.rs`, `.eh3dlist`) : le nom, les fichiers du travail avec leur type et SHA-256 et le zéro de travail ; à la lecture il refuse les chemins qui sortent du projet et migre le premier format. Un zéro pièce qui n'est pas formé de deux nombres est refusé et le fichier reste tel quel. **Projets récents** (`src/recent.rs`) garde les dix derniers.
 * **Recherche et relance :** le binaire d'un programme est trouvé par le nom `[[bin]]` de son `Cargo.toml` (`eh3d-camdebug`, `eh3d-pnp`...), et un programme que l'opérateur a arrêté volontairement (un signal) ou qui a refusé ses arguments (code de sortie 1 ou 2) n'est pas relancé : seul un plantage l'est.
 * **La fenêtre** (`src/window.rs`, `src/gui.rs` ; `--features gui`, programme `eh3d-launcher-gui`) : les projets récents, ouvrir ou créer un projet, ajouter et retirer ses fichiers avec les mêmes vérifications que `add-layer`, et les programmes de la suite avec un bouton qui lance chacun avec le projet. L'état, les actions, les réglages et les mots sont du code simple avec des tests ; le dessin est mince. Écrite, pas encore vue sur un écran.
 
@@ -81,7 +81,7 @@ Comment les parties de ce dépôt s'articulent : qui l'utilise, ce qu'il contien
 * **Sans deviner :** une valeur absurde est une erreur qui dit laquelle et pourquoi, jamais un résultat qui n'en a que l'air.
 * **Limite de taille des fichiers lus :** les manifestes des dépôts et la liste des projets récents ne sont lus que s'ils ne dépassent pas `max_file_mib` de `launcher.cfg` (16 Mio par défaut, de 1 à 1024), en ligne de commande et dans la fenêtre, et `launcher.cfg` lui-même jusqu'à 1 Mio ; un manifeste trop gros est ignoré avec le code `file_too_large` et son nom comme tout manifeste abîmé, `eh3d-launcher recent` se termine avec ce code pour une liste trop grosse et la fenêtre démarre avec une liste vide. Les autres codes sont `file_unreadable` et `file_not_text`.
 * **Pas de code unsafe :** `#![forbid(unsafe_code)]` dans la bibliothèque et le programme.
-* **Des listes et des projets plus sûrs :** le chemin d'une couche ne peut pas être `.`, un nom que Windows refuse (`CON`, `AUX`, `COM1`...) ni finir par un point ou une espace, deux couches qui ne diffèrent que par la casse n'en font qu'une, la liste des récents garde le chemin complet d'un fichier existant et deux exécutions simultanées (`recent`, `add-layer`) ne perdent pas la modification de l'autre car le fichier est verrouillé pendant qu'il change ; une couche est hachée par blocs de 64 Kio, et un programme arrêté par un signal est signalé comme tel et non comme un échec.
+* **Des listes et des projets plus sûrs :** le chemin d'une couche ne peut pas être `.`, un nom que Windows refuse (`CON`, `AUX`, `COM1`...) ni finir par un point ou une espace, deux couches qui ne diffèrent que par la casse n'en font qu'une, la liste des récents garde le chemin complet d'un fichier existant et deux exécutions simultanées (`recent`, `add-layer`) ne perdent pas la modification de l'autre car le fichier est verrouillé pendant qu'il change ; une couche est hachée par blocs de 64 Kio avant que la liste du projet soit verrouillée, et un programme arrêté par un signal est signalé comme tel et non comme un échec.
 
 ## 🔒 Sécurité et protection
 
@@ -158,7 +158,7 @@ Pour prendre une capture de la fenêtre sans l'ouvrir à la main, lancez-la avec
 
 ## 🧪 Tests
 
-La suite compte 225 tests (`cargo test`, exécutés sous Windows et Linux dans le CI). Ils vérifient les cas normaux, les cas limites et les entrées abîmées : fichiers vides, bruit et fichiers coupés ne font jamais paniquer. Le CI exécute aussi `cargo fmt --check`, `cargo clippy` (aussi avec `--features gui`) avec les avertissements comme erreurs et `python -I tools/ci_validate.py`.
+La suite compte 228 tests (`cargo test`, exécutés sous Windows et Linux dans le CI). Ils vérifient les cas normaux, les cas limites et les entrées abîmées : fichiers vides, bruit et fichiers coupés ne font jamais paniquer. Le CI exécute aussi `cargo fmt --check`, `cargo clippy` (aussi avec `--features gui`) avec les avertissements comme erreurs et `python -I tools/ci_validate.py`.
 
 ## 🏗️ Compilation et publication
 

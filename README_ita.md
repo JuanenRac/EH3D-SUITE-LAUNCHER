@@ -18,7 +18,7 @@
 
 ---
 
-**Verifica di onestà - cosa funziona oggi:** una libreria Rust e un programma a riga di comando (`eh3d-launcher`) con 225 test eseguiti su un computer: trova i programmi della suite dai loro manifesti, li avvia e li riavvia se falliscono, conserva i progetti recenti e scrive e verifica il file di progetto con lo SHA-256 di ogni file. Una finestra (`eh3d-launcher-gui`, compilata con la funzione `gui`) è scritta e la sua logica è testata, ma non è stata compilata né guardata su uno schermo; nulla è stato provato su una macchina e nulla è stato verificato su una raccolta di file reali.
+**Verifica di onestà - cosa funziona oggi:** una libreria Rust e un programma a riga di comando (`eh3d-launcher`) con 228 test eseguiti su un computer: trova i programmi della suite dai loro manifesti, li avvia e li riavvia se falliscono, conserva i progetti recenti e scrive e verifica il file di progetto con lo SHA-256 di ogni file. Una finestra (`eh3d-launcher-gui`, compilata con la funzione `gui`) è scritta e la sua logica è testata, ma non è stata compilata né guardata su uno schermo; nulla è stato provato su una macchina e nulla è stato verificato su una raccolta di file reali.
 
 ---
 
@@ -31,7 +31,7 @@
 |---|---|
 | Versione | `0.0.7` |
 | Maturità | Funzionale |
-| Test | 225 |
+| Test | 228 |
 | Stack tecnologico | Rust |
 | Su hardware reale | Non provato: nulla di questo ha girato su una macchina |
 
@@ -47,7 +47,7 @@ Ogni riga è una parte di questo repository e il semaforo dice a che punto è og
 |---|---|---|
 | Nucleo | 🟡 | trova i programmi della suite dai loro manifesti, li avvia e li riavvia se falliscono, conserva i progetti recenti e scrive e verifica il file di progetto con lo SHA-256 di ogni file; provato su un computer con input normali e danneggiati, non con una raccolta di file reali. |
 | Riga di comando | 🟡 | `eh3d-launcher` esegue le stesse funzioni della libreria e stampa il risultato; ogni errore torna come messaggio e codice di uscita diverso da zero. |
-| Test | 🟡 | 225 test passano (`cargo test`), con casi normali, casi limite e input danneggiati, e un programma simulato che si blocca, viene riavviato, attende di più ogni volta e infine viene abbandonato. |
+| Test | 🟡 | 228 test passano (`cargo test`), con casi normali, casi limite e input danneggiati, e un programma simulato che si blocca, viene riavviato, attende di più ogni volta e infine viene abbandonato. |
 | Sicurezza | 🟡 | Rust sicuro e semplice (`forbid(unsafe_code)`): nulla va in panico con i file ricevuti e un valore errato è un errore con il suo motivo; nessuna revisione indipendente. |
 | Finestra | 🟠 | Scritta (egui, `--features gui`, programma `eh3d-launcher-gui`): i progetti recenti, aprire o creare un progetto, aggiungere e rimuovere i suoi file con i controlli della riga di comando e i programmi della suite con un pulsante per avviare ciascuno; la sua logica è testata, ma non è ancora stata compilata né guardata su uno schermo. |
 | Hardware reale | 🔴 | Non provato: nulla di questo è stato eseguito su una macchina. |
@@ -57,7 +57,7 @@ Ogni riga è una parte di questo repository e il semaforo dice a che punto è og
 
 * **Il registro** (`src/registry.rs`): ogni repository della suite dice cos'è nel suo `eh3d.project.json`; il launcher li legge, salta quelli danneggiati indicando il motivo e dice quali programmi sono compilati.
 * **Il lanciatore** (`src/launch.rs`): avvia un programma della suite e, se termina con errore, lo riavvia fino a due volte con un'attesa che raddoppia; un programma che termina bene viene lasciato in pace.
-* **Il file di progetto** (`src/project.rs`, `.eh3dlist`): il nome, i file del lavoro con tipo e SHA-256 e lo zero di lavoro; in lettura rifiuta i percorsi che escono dal progetto e migra il primo formato. **Progetti recenti** (`src/recent.rs`) conserva gli ultimi dieci.
+* **Il file di progetto** (`src/project.rs`, `.eh3dlist`): il nome, i file del lavoro con tipo e SHA-256 e lo zero di lavoro; in lettura rifiuta i percorsi che escono dal progetto e migra il primo formato. Uno zero di lavoro che non è formato da due numeri viene rifiutato e il file resta com'è. **Progetti recenti** (`src/recent.rs`) conserva gli ultimi dieci.
 * **Ricerca e riavvio:** il binario di un programma si trova dal nome `[[bin]]` del suo `Cargo.toml` (`eh3d-camdebug`, `eh3d-pnp`...), e un programma che l'operatore ha chiuso di proposito (un segnale) o che ha rifiutato i suoi argomenti (codice di uscita 1 o 2) non viene riavviato: solo un arresto anomalo.
 * **La finestra** (`src/window.rs`, `src/gui.rs`; `--features gui`, programma `eh3d-launcher-gui`): i progetti recenti, aprire o creare un progetto, aggiungere e rimuovere i suoi file con gli stessi controlli di `add-layer` e i programmi della suite con un pulsante che avvia ciascuno con il progetto. Stato, azioni, impostazioni e parole sono codice semplice con test; il disegno è sottile. Scritta, non ancora vista su uno schermo.
 
@@ -81,7 +81,7 @@ Come si incastrano le parti di questo repository: chi lo usa, cosa contiene e da
 * **Nessuna ipotesi:** un valore privo di senso è un errore che dice quale e perché, mai un risultato che sembra solo giusto.
 * **Limite di dimensione dei file letti:** i manifesti dei repository e l'elenco dei progetti recenti si leggono solo se non superano `max_file_mib` di `launcher.cfg` (16 MiB di default, da 1 a 1024), nella riga di comando e nella finestra, e `launcher.cfg` stesso fino a 1 MiB; un manifesto troppo grande è saltato con il codice `file_too_large` e il suo nome come ogni manifesto danneggiato, `eh3d-launcher recent` termina con quel codice per un elenco troppo grande e la finestra parte con l'elenco vuoto. Gli altri codici sono `file_unreadable` e `file_not_text`.
 * **Nessun codice unsafe:** `#![forbid(unsafe_code)]` nella libreria e nel programma.
-* **Elenchi e progetti più sicuri:** il percorso di un livello non può essere `.`, un nome che Windows rifiuta (`CON`, `AUX`, `COM1`...) né finire con un punto o uno spazio, due livelli che differiscono solo per le maiuscole sono uno solo, l'elenco dei recenti conserva il percorso completo di un file esistente e due esecuzioni contemporanee (`recent`, `add-layer`) non perdono la modifica dell'altra perché il file è bloccato mentre cambia; un livello viene calcolato a blocchi di 64 KiB e un programma terminato da un segnale viene indicato come tale e non come un errore.
+* **Elenchi e progetti più sicuri:** il percorso di un livello non può essere `.`, un nome che Windows rifiuta (`CON`, `AUX`, `COM1`...) né finire con un punto o uno spazio, due livelli che differiscono solo per le maiuscole sono uno solo, l'elenco dei recenti conserva il percorso completo di un file esistente e due esecuzioni contemporanee (`recent`, `add-layer`) non perdono la modifica dell'altra perché il file è bloccato mentre cambia; un livello viene calcolato a blocchi di 64 KiB prima di bloccare l'elenco del progetto e un programma terminato da un segnale viene indicato come tale e non come un errore.
 
 ## 🔒 Sicurezza e protezione
 
@@ -158,7 +158,7 @@ Per fare un'immagine della finestra senza aprirla a mano, eseguila con `--shot F
 
 ## 🧪 Test
 
-La suite ha 225 test (`cargo test`, eseguiti su Windows e Linux nella CI). Verificano i casi normali, i casi limite e gli input danneggiati: file vuoti, spazzatura e file tagliati non causano mai un panico. La CI esegue anche `cargo fmt --check`, `cargo clippy` (anche con `--features gui`) con gli avvisi come errori e `python -I tools/ci_validate.py`.
+La suite ha 228 test (`cargo test`, eseguiti su Windows e Linux nella CI). Verificano i casi normali, i casi limite e gli input danneggiati: file vuoti, spazzatura e file tagliati non causano mai un panico. La CI esegue anche `cargo fmt --check`, `cargo clippy` (anche con `--features gui`) con gli avvisi come errori e `python -I tools/ci_validate.py`.
 
 ## 🏗️ Compilazione e rilascio
 
