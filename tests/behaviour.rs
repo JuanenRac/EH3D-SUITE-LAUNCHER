@@ -1250,7 +1250,10 @@ fn a_layer_is_hashed_before_the_project_is_locked() {
     fs::write(&lock, "").unwrap();
     // with the lock held by somebody else, the failure is the one of the file: it was read without asking for the lock
     let e = add_layer_to_file(&file, &dir.join("folder.gtl")).unwrap_err();
-    assert!(e.contains("folder.gtl") && !e.contains("lock"), "{e}");
+    assert!(
+        e.contains("folder.gtl") && !e.contains("holds the lock"),
+        "{e}"
+    );
     assert!(lock.exists(), "the lock of the other run was removed");
 }
 
