@@ -5,7 +5,8 @@ use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
 use std::fs;
 use std::io::Read;
-use std::path::Path;
+use std::path::{Path, PathBuf};
+use std::time::SystemTime;
 
 /// The version of the format this program writes; an older one is migrated when it is read, a newer one is refused.
 pub const SCHEMA_VERSION: u64 = 1;
@@ -219,6 +220,55 @@ fn usable_part(part: &str) -> bool {
     !reserved
 }
 
+/// A file that was read and hashed and is ready to be put in a list. Hashing a large file takes longer than the lock of a project list lasts, so it is done before the lock is
+/// taken; what is done under the lock is only checked: that the list does not have the file and that the file is still the one that was hashed.
+struct Prepared {
+    abs: PathBuf,
+    layer: Layer,
+    stamp: (u64, Option<SystemTime>),
+}
+
+/// The size and the time of the last change of a file: what tells, without reading it again, that it is not the one that was hashed.
+fn stamp_of(file: &Path) -> Result<(u64, Option<SystemTime>), String> {
+    let meta = fs::metadata(file).map_err(|e| format!("{}: {e}", file.display()))?;
+    Ok((meta.len(), meta.modified().ok()))
+}
+
+/// Reads and hashes `file`, which must lie under `root`.
+fn prepare_layer(root: &Path, file: &Path) -> Result<Prepared, String> {
+    let abs = if file.is_absolute() {
+        file.to_path_buf()
+    } else {
+        root.join(file)
+    };
+    let rel = abs.strip_prefix(root).map_err(|_| {
+        format!(
+            "{}: the file is not under the folder of the project",
+            abs.display()
+        )
+    })?;
+    let rel = rel
+        .components()
+        .map(|c| c.as_os_str().to_string_lossy().into_owned())
+        .collect::<Vec<_>>()
+        .join("/");
+    if rel.split('/').any(|p| p == ".." || p.is_empty()) {
+        return Err(format!("{rel}: not a path inside the project"));
+    }
+    // taken before the file is read: a change while it is being hashed is seen too
+    let stamp = stamp_of(&abs)?;
+    let sha256 = sha256_hex(&abs)?;
+    Ok(Prepared {
+        layer: Layer {
+            kind: kind_of_path(&abs),
+            path: rel,
+            sha256,
+        },
+        abs,
+        stamp,
+    })
+}
+
 fn check_name(name: &str) -> Result<(), String> {
     let n = name.trim();
     if n.is_empty() {
@@ -247,34 +297,21 @@ impl Project {
 
     /// Adds a file that lies under `root` (the folder of the project file); a file outside of it, or one already added, is an error.
     pub fn add_layer(&mut self, root: &Path, file: &Path) -> Result<(), String> {
-        let abs = if file.is_absolute() {
-            file.to_path_buf()
-        } else {
-            root.join(file)
-        };
-        let rel = abs.strip_prefix(root).map_err(|_| {
-            format!(
-                "{}: the file is not under the folder of the project",
-                abs.display()
-            )
-        })?;
-        let rel = rel
-            .components()
-            .map(|c| c.as_os_str().to_string_lossy().into_owned())
-            .collect::<Vec<_>>()
-            .join("/");
-        if rel.split('/').any(|p| p == ".." || p.is_empty()) {
-            return Err(format!("{rel}: not a path inside the project"));
-        }
-        if self.layers.iter().any(|l| l.path == rel) {
+        self.insert_prepared(prepare_layer(root, file)?)
+    }
+
+    /// Puts in the list a file that was hashed before; one already in it, or one that is not what was hashed any more, is an error.
+    fn insert_prepared(&mut self, ready: Prepared) -> Result<(), String> {
+        let rel = &ready.layer.path;
+        if self.layers.iter().any(|l| l.path == *rel) {
             return Err(format!("{rel}: already in the project"));
         }
-        let sha256 = sha256_hex(&abs)?;
-        self.layers.push(Layer {
-            kind: kind_of_path(&abs),
-            path: rel,
-            sha256,
-        });
+        if stamp_of(&ready.abs)? != ready.stamp {
+            return Err(format!(
+                "{rel}: the file changed while it was being added; add it again"
+            ));
+        }
+        self.layers.push(ready.layer);
         Ok(())
     }
 
@@ -368,21 +405,36 @@ impl Project {
                 true
             }
         });
-        let zero = v.get("zero");
-        let num = |key: &str| {
-            zero.and_then(|z| z.get(key))
-                .and_then(|n| n.as_f64())
-                .filter(|n| n.is_finite())
-                .unwrap_or(0.0)
+        // no `zero` at all is the origin; one that is written must be two numbers: read as 0, the next change would write that 0 over what the file held
+        let zero = match v.get("zero") {
+            None | Some(Value::Null) => (0.0, 0.0),
+            Some(z) => {
+                let num = |key: &str| {
+                    z.get(key)
+                        .and_then(Value::as_f64)
+                        .filter(|n| n.is_finite())
+                        .ok_or_else(|| {
+                            format!("the work zero of the project file has no number for {key}")
+                        })
+                };
+                (num("x")?, num("y")?)
+            }
         };
         Ok(Project {
             name: name.trim().to_string(),
             layers,
-            zero: (num("x"), num("y")),
+            zero,
         })
     }
 
     pub fn save(&self, file: &Path) -> Result<(), String> {
+        // JSON has no word for such a number: it would be written as `null`, which is not read back
+        if !(self.zero.0.is_finite() && self.zero.1.is_finite()) {
+            return Err(format!(
+                "{}: the work zero is not a number; nothing was written",
+                file.display()
+            ));
+        }
         write_atomic(file, &self.to_json()).map_err(|e| format!("{}: {e}", file.display()))
     }
 
@@ -443,7 +495,7 @@ pub fn create_file(file: &str, name: &str) -> Result<(), String> {
 }
 
 /// Adds `layer` to the project list `file` (kind and SHA-256 are recorded) and says how many files the project has now. The file must lie under the folder of the project.
-/// Reading, adding and writing happen under a lock: two runs at the same time do not lose a layer.
+/// The file is hashed first; reading the list, adding and writing happen under a lock: two runs at the same time do not lose a layer.
 pub fn add_layer_to_file(file: &Path, layer: &Path) -> Result<usize, String> {
     let root = file
         .parent()
@@ -455,9 +507,10 @@ pub fn add_layer_to_file(file: &Path, layer: &Path) -> Result<usize, String> {
     let layer_abs = layer
         .canonicalize()
         .map_err(|e| format!("{}: {e}", layer.display()))?;
+    let ready = prepare_layer(&root, &layer_abs)?;
     with_lock(file, || {
         let mut p = Project::load(file)?;
-        p.add_layer(&root, &layer_abs)?;
+        p.insert_prepared(ready)?;
         p.save(file)?;
         Ok::<usize, String>(p.layers.len())
     })?
@@ -471,4 +524,27 @@ pub fn remove_layer_from_file(file: &Path, layer: &str) -> Result<usize, String>
         p.save(file)?;
         Ok::<usize, String>(p.layers.len())
     })?
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_file_that_changes_after_it_was_hashed_is_not_added() {
+        let dir = std::env::temp_dir().join(format!("eh3d-launcher-stamp-{}", std::process::id()));
+        fs::create_dir_all(&dir).unwrap();
+        let file = dir.join("a.gtl");
+        fs::write(&file, "one").unwrap();
+        let ready = prepare_layer(&dir, &file).unwrap();
+        fs::write(&file, "another text").unwrap();
+        let mut p = Project::new("P").unwrap();
+        let e = p.insert_prepared(ready).unwrap_err();
+        assert!(e.contains("changed while it was being added"), "{e}");
+        assert!(p.layers.is_empty());
+        let ready = prepare_layer(&dir, &file).unwrap();
+        p.insert_prepared(ready).unwrap();
+        assert_eq!(p.layers[0].sha256, sha256_hex(&file).unwrap());
+        fs::remove_dir_all(&dir).unwrap();
+    }
 }

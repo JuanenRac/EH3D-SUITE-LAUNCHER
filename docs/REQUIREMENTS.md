@@ -2,7 +2,7 @@
 
 This register is the single source of the state of each capability: `STATUS.md` and the README files cite it and never state a state that it does not. A state is one of `planned`, `prototype`, `implemented` and `validated`. `validated` means that a person has run the capability on a real machine and the evidence of the manifest says `bench` or `field`; nothing here is validated, because nothing of this program has been run with the real programs of the suite on a workshop machine.
 
-The register has 28 requirements: 20 implemented, 3 prototype, 5 planned and 0 validated. By progress: 20 done, 3 partial, 1 pending and 4 blocked. High coverage is not proof of correctness, so each row says how it is checked: the test that names it, and what it shows.
+The register has 30 requirements: 22 implemented, 3 prototype, 5 planned and 0 validated. By progress: 22 done, 3 partial, 1 pending and 4 blocked. High coverage is not proof of correctness, so each row says how it is checked: the test that names it, and what it shows.
 
 ## How to read the register
 
@@ -67,3 +67,10 @@ The check is `tests/reqs.rs`: it reads this table, finds each test and fails whe
 | SLCH-026 | A project is an archive that contains its files. | planned | pending | none | `planned:archive::a_project_travels_as_one_archive` | The project points at the files today. |
 | SLCH-027 | The launcher runs the real programs of the suite in a workshop. | planned | blocked | none | `planned:workshop::the_real_programs_are_started_and_restarted_in_a_workshop` | Needs a workshop with the programs built. |
 | SLCH-028 | The window is looked at on a screen of each system. | planned | blocked | none | `planned:window_screen::the_window_matches_the_reference_picture` | Needs a person at a screen. |
+
+## Safety of the project file
+
+| ID | Requirement | State | Progress | Evidence | Test | Limits |
+|---|---|---|---|---|---|---|
+| SLCH-029 | A work zero that is not two numbers is refused, and the file that holds it is left as it is. | implemented | done | host-test | `behaviour::a_damaged_work_zero_or_one_that_is_not_a_number_is_never_written_over` | - |
+| SLCH-030 | A layer is hashed before the project list is locked, and one that changes in between is not added. | implemented | done | host-test | `behaviour::a_layer_is_hashed_before_the_project_is_locked` | A change is told by the size and the time of the file. |

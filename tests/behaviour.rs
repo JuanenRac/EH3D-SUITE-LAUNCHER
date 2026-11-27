@@ -1114,10 +1114,25 @@ fn two_layers_that_differ_only_in_case_are_one_and_the_first_is_kept() {
 }
 
 #[test]
-fn a_zero_that_is_not_a_number_is_zero_and_an_unknown_kind_is_other() {
-    let text = "{\"name\":\"x\",\"zero\":{\"x\":\"a\",\"y\":null},\"layers\":[{\"path\":\"a.gbr\",\"kind\":\"weird\"}]}";
+fn a_zero_that_is_not_a_number_is_refused_and_an_unknown_kind_is_other() {
+    for zero in [
+        "{\"x\":\"a\",\"y\":1}",
+        "{\"x\":1,\"y\":null}",
+        "{\"x\":1}",
+        "{\"y\":1}",
+        "{}",
+        "[1,2]",
+        "7",
+        "\"0,0\"",
+    ] {
+        let e = Project::from_json(&format!("{{\"name\":\"x\",\"zero\":{zero}}}")).unwrap_err();
+        assert!(e.contains("work zero"), "{zero}: {e}");
+    }
+    for text in ["{\"name\":\"x\"}", "{\"name\":\"x\",\"zero\":null}"] {
+        assert_eq!(Project::from_json(text).unwrap().zero, (0.0, 0.0), "{text}");
+    }
+    let text = "{\"name\":\"x\",\"layers\":[{\"path\":\"a.gbr\",\"kind\":\"weird\"}]}";
     let p = Project::from_json(text).unwrap();
-    assert_eq!(p.zero, (0.0, 0.0));
     assert_eq!(p.layers[0].kind, Kind::Other);
     let p = Project::from_json("{\"name\":\"x\",\"zero\":{\"x\":1e3,\"y\":-0.5}}").unwrap();
     assert_eq!(p.zero, (1000.0, -0.5));
@@ -1199,6 +1214,47 @@ fn a_damaged_list_of_layers_is_never_written_over() {
         assert!(result.unwrap_err().contains("not a list"));
     }
     assert_eq!(fs::read_to_string(&file).unwrap(), damaged);
+}
+
+#[test]
+fn a_damaged_work_zero_or_one_that_is_not_a_number_is_never_written_over() {
+    let dir = temp("zero-damaged");
+    fs::write(dir.join("a.gtl"), "x").unwrap();
+    let file = dir.join("p.eh3dlist");
+    let damaged = "{\"name\":\"p\",\"layers\":[],\"zero\":{\"x\":\"12,5\",\"y\":3}}";
+    fs::write(&file, damaged).unwrap();
+    for result in [
+        add_layer_to_file(&file, &dir.join("a.gtl")),
+        remove_layer_from_file(&file, "a.gtl"),
+    ] {
+        let e = result.unwrap_err();
+        assert!(e.contains("work zero") && e.contains("for x"), "{e}");
+    }
+    assert_eq!(fs::read_to_string(&file).unwrap(), damaged);
+    let mut p = Project::new("p").unwrap();
+    for zero in [(f64::NAN, 0.0), (0.0, f64::INFINITY)] {
+        p.zero = zero;
+        assert!(p.save(&file).unwrap_err().contains("work zero"));
+    }
+    assert_eq!(fs::read_to_string(&file).unwrap(), damaged);
+}
+
+#[test]
+fn a_layer_is_hashed_before_the_project_is_locked() {
+    let dir = temp("hash-before-lock");
+    // a folder cannot be hashed
+    fs::create_dir_all(dir.join("folder.gtl")).unwrap();
+    let file = dir.join("p.eh3dlist");
+    create_file(file.to_str().unwrap(), "p").unwrap();
+    let lock = dir.join("p.eh3dlist.lock");
+    fs::write(&lock, "").unwrap();
+    // with the lock held by somebody else, the failure is the one of the file: it was read without asking for the lock
+    let e = add_layer_to_file(&file, &dir.join("folder.gtl")).unwrap_err();
+    assert!(
+        e.contains("folder.gtl") && !e.contains("holds the lock"),
+        "{e}"
+    );
+    assert!(lock.exists(), "the lock of the other run was removed");
 }
 
 #[test]

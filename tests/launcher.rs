@@ -191,9 +191,9 @@ fn the_project_file_is_read_with_care() {
         let text = format!(r#"{{"name":"p","layers":[{{"path":"{bad}"}}]}}"#);
         assert!(Project::from_json(&text).is_err(), "{bad}");
     }
-    // a zero that is not a number is the origin, not a failure
-    let p = Project::from_json(r#"{"name":"p","zero":{"x":"a","y":2.5}}"#).unwrap();
-    assert_eq!(p.zero, (0.0, 2.5));
+    // a zero that is not a number is refused, not read as the origin
+    let e = Project::from_json(r#"{"name":"p","zero":{"x":"a","y":2.5}}"#).unwrap_err();
+    assert!(e.contains("work zero") && e.contains("for x"), "{e}");
 }
 
 #[test]

@@ -6,7 +6,7 @@ EH3D-SUITE-LAUNCHER is a working program on a computer: a library (`eh3d_suite_l
 
 ## Capabilities
 
-The official state of each capability is in `REQUIREMENTS.md`. The register has 28 requirements: 20 implemented, 3 prototype, 5 planned and 0 validated. By progress: 20 done, 3 partial, 1 pending and 4 blocked. This page never states a state that `REQUIREMENTS.md` does not.
+The official state of each capability is in `REQUIREMENTS.md`. The register has 30 requirements: 22 implemented, 3 prototype, 5 planned and 0 validated. By progress: 22 done, 3 partial, 1 pending and 4 blocked. This page never states a state that `REQUIREMENTS.md` does not.
 
 ## Open questions
 
