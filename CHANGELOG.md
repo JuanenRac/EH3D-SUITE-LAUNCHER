@@ -4,6 +4,8 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+- **Third-party notices in every package (`docs/THIRD_PARTY_NOTICES`):** the packages of the releases now carry the copyright notices and licence texts of the Rust crates and of the data the program is built with, and the CI fails when a new dependency or licence is not in the file.
+
 ## [0.0.8] - A work zero that is not a number is refused and project files are written safely
 
 - **A work zero that is not a number is refused (fix):** it was read as 0 and the next change of the project wrote that 0 over what the file held. A project list without `zero` still has the origin; one with it needs a number for `x` and for `y`, and the error says which is missing. A zero that is not finite is not written either.
