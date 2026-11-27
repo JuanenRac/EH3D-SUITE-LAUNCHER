@@ -568,7 +568,7 @@ dependencies = [
 
 [[package]]
 name = "eh3d-suite-launcher"
-version = "0.0.7"
+version = "0.0.8"
 dependencies = [
  "eframe",
  "png",
