@@ -4,6 +4,8 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+## [0.0.9] - Third-party notices in every package
+
 - **Third-party notices in every package (`docs/THIRD_PARTY_NOTICES`):** the packages of the releases now carry the copyright notices and licence texts of the Rust crates and of the data the program is built with, and the CI fails when a new dependency or licence is not in the file.
 
 ## [0.0.8] - A work zero that is not a number is refused and project files are written safely
